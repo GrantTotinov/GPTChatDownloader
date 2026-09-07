@@ -13,6 +13,61 @@ const devError = (...args: unknown[]): void => {
   }
 };
 
+/*
+ * ---------------------------------------------------------
+ * SENDER / INPUT VALIDATION
+ * ---------------------------------------------------------
+ *
+ * chrome.runtime.onMessage fires for messages from any
+ * frame belonging to this extension (popup, options,
+ * content scripts, offscreen document). There is no
+ * externally_connectable entry in the manifest, so an
+ * arbitrary web page cannot reach these listeners directly.
+ * isOwnExtensionSender is still checked as defense in depth,
+ * in case a future manifest change or a compromised content
+ * script tries to relay a forged message.
+ */
+function isOwnExtensionSender(sender: chrome.runtime.MessageSender): boolean {
+  return sender.id === chrome.runtime.id;
+}
+
+/*
+ * GitHub "owner/repo" full_name as returned by the GitHub
+ * API: two path segments, each restricted to the characters
+ * GitHub allows in user/org and repo names.
+ */
+const REPO_FULL_NAME_PATTERN = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
+
+/*
+ * Matches the filenames buildFilename() in popup.ts
+ * generates: no path separators, no traversal segments.
+ */
+const SAFE_FILENAME_PATTERN = /^[A-Za-z0-9._-]+$/;
+
+const MAX_EXPORT_CONTENT_LENGTH = 10_000_000;
+
+function isValidRepoFullName(value: unknown): value is string {
+  return typeof value === "string" && REPO_FULL_NAME_PATTERN.test(value);
+}
+
+function isValidExportFilename(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= 255 &&
+    SAFE_FILENAME_PATTERN.test(value) &&
+    !value.includes("..")
+  );
+}
+
+function isValidExportContent(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_EXPORT_CONTENT_LENGTH
+  );
+}
+
 async function setupOffscreenDocument(): Promise<void> {
   const existingContexts = await chrome.runtime.getContexts({
     contextTypes: ["OFFSCREEN_DOCUMENT"],
@@ -29,8 +84,12 @@ async function setupOffscreenDocument(): Promise<void> {
   });
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type !== "COPY_TO_CLIPBOARD") {
+    return false;
+  }
+
+  if (!isOwnExtensionSender(sender)) {
     return false;
   }
 
@@ -85,8 +144,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
  * GITHUB_AUTH_COMPLETE runtime message once it resolves,
  * which whichever UI is open (if any) can listen for.
  */
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type !== "GITHUB_START_AUTH") {
+    return false;
+  }
+
+  if (!isOwnExtensionSender(sender)) {
     return false;
   }
 
@@ -155,8 +218,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
  * GITHUB: CONNECTION STATUS
  * ---------------------------------------------------------
  */
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type !== "GITHUB_GET_STATUS") {
+    return false;
+  }
+
+  if (!isOwnExtensionSender(sender)) {
     return false;
   }
 
@@ -196,8 +263,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
  * GITHUB: DISCONNECT
  * ---------------------------------------------------------
  */
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type !== "GITHUB_DISCONNECT") {
+    return false;
+  }
+
+  if (!isOwnExtensionSender(sender)) {
     return false;
   }
 
@@ -222,8 +293,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
  * GITHUB: LIST REPOS
  * ---------------------------------------------------------
  */
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type !== "GITHUB_LIST_REPOS") {
+    return false;
+  }
+
+  if (!isOwnExtensionSender(sender)) {
     return false;
   }
 
@@ -248,9 +323,26 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
  * GITHUB: SAVE FILE
  * ---------------------------------------------------------
  */
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type !== "GITHUB_SAVE_FILE") {
     return false;
+  }
+
+  if (!isOwnExtensionSender(sender)) {
+    return false;
+  }
+
+  if (
+    !isValidRepoFullName(message.fullName) ||
+    !isValidExportFilename(message.filename) ||
+    !isValidExportContent(message.content)
+  ) {
+    sendResponse({
+      success: false,
+      error: "Invalid save request.",
+    });
+
+    return true;
   }
 
   (async () => {

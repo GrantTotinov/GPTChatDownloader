@@ -39,7 +39,9 @@ const devError = (...args: unknown[]): void => {
  */
 
 function injectPageBridge(): void {
-  if (document.documentElement.dataset.GPTChatDownloaderBridgeInjected === "true") {
+  if (
+    document.documentElement.dataset.GPTChatDownloaderBridgeInjected === "true"
+  ) {
     return;
   }
 
@@ -212,9 +214,12 @@ function getApiMessageParentId(message: ApiMessage): string | null {
     message.metadata?.parent_id,
   ];
 
-  return candidates.find(
-    (candidate): candidate is string => typeof candidate === "string" && candidate.length > 0,
-  ) ?? null;
+  return (
+    candidates.find(
+      (candidate): candidate is string =>
+        typeof candidate === "string" && candidate.length > 0,
+    ) ?? null
+  );
 }
 
 function getTurnExchangeId(message: ApiMessage): string | null {
@@ -305,10 +310,21 @@ function resolveActiveMessages(
     order: number;
   }> = [];
 
+  /*
+   * `assistants` is sorted by time. Rather than re-scanning
+   * it from the start for every user (O(users * assistants)),
+   * walk it once with a forward-only pointer: since users are
+   * also processed in time order, any assistant the pointer
+   * has already passed can never match a later user either.
+   */
+  let assistantPointer = 0;
+
   for (const [userIndex, user] of users.entries()) {
     if (!user.id) {
       continue;
     }
+
+    const userTime = getApiMessageTime(user);
 
     const candidates = assistantsByParent.get(user.id) ?? [];
     const mappedAssistant =
@@ -321,26 +337,54 @@ function resolveActiveMessages(
       users[userIndex + 1] === undefined
         ? Number.POSITIVE_INFINITY
         : getApiMessageTime(users[userIndex + 1]);
-    const chronologicalAssistant = assistants.find((assistant) => {
+
+    /*
+     * Advance the pointer past any assistant strictly
+     * earlier than this user - those can never be chosen
+     * for this or any later user.
+     */
+    while (
+      assistantPointer < assistants.length &&
+      getApiMessageTime(assistants[assistantPointer]) < userTime
+    ) {
+      assistantPointer++;
+    }
+
+    let chronologicalAssistant: ApiMessage | undefined;
+    let nearestAssistant: ApiMessage | undefined;
+
+    for (let i = assistantPointer; i < assistants.length; i++) {
+      const assistant = assistants[i];
+
       if (!assistant.id || usedAssistants.has(assistant.id)) {
-        return false;
+        continue;
       }
 
       const assistantTime = getApiMessageTime(assistant);
 
-      return (
-        assistantTime >= getApiMessageTime(user) &&
-        assistantTime < nextUserTime
-      );
-    });
-    const nearestAssistant = assistants.find((assistant) => {
-      if (!assistant.id || usedAssistants.has(assistant.id)) {
-        return false;
+      if (nearestAssistant === undefined) {
+        nearestAssistant = assistant;
       }
 
-      return getApiMessageTime(assistant) >= getApiMessageTime(user);
-    });
-    const assistant = mappedAssistant ?? chronologicalAssistant ?? nearestAssistant;
+      if (assistantTime < nextUserTime) {
+        chronologicalAssistant = assistant;
+      }
+
+      /*
+       * Once we've found both the in-window match and the
+       * nearest fallback, or moved past the window, further
+       * scanning can't improve either answer.
+       */
+      if (
+        chronologicalAssistant !== undefined ||
+        assistantTime >= nextUserTime
+      ) {
+        break;
+      }
+    }
+
+    const assistant =
+      mappedAssistant ?? chronologicalAssistant ?? nearestAssistant;
 
     const selectedAssistant =
       assistant &&
@@ -521,7 +565,9 @@ function fetchConversationPage(
 
       if (data.type === "GPTChatDownloader_API_ERROR") {
         finishError(
-          new Error(data.error ?? "Unknown error from GPTChatDownloader page bridge."),
+          new Error(
+            data.error ?? "Unknown error from GPTChatDownloader page bridge.",
+          ),
         );
 
         return;
@@ -533,7 +579,9 @@ function fetchConversationPage(
 
       if (!data.data) {
         finishError(
-          new Error("GPTChatDownloader page bridge returned an empty API response."),
+          new Error(
+            "GPTChatDownloader page bridge returned an empty API response.",
+          ),
         );
 
         return;
@@ -713,7 +761,6 @@ async function loadEntireConversation(): Promise<Message[]> {
         collected.set(id, mergedMessage);
       }
     }
-
   };
 
   /*
@@ -730,7 +777,8 @@ async function loadEntireConversation(): Promise<Message[]> {
   collectPage(page);
 
   devLog(
-    `GPTChatDownloader: API page ${pageNumber}, ` + `collected=${collected.size}`,
+    `GPTChatDownloader: API page ${pageNumber}, ` +
+      `collected=${collected.size}`,
   );
 
   /*
@@ -769,7 +817,8 @@ async function loadEntireConversation(): Promise<Message[]> {
     collectPage(page);
 
     devLog(
-      `GPTChatDownloader: API page ${pageNumber}, ` + `collected=${collected.size}`,
+      `GPTChatDownloader: API page ${pageNumber}, ` +
+        `collected=${collected.size}`,
     );
 
     /*
@@ -842,10 +891,7 @@ async function loadEntireConversation(): Promise<Message[]> {
   });
 
   result.forEach((message, index) => {
-    devLog(
-      `${index + 1} ${message.role}:`,
-      message.content.substring(0, 70),
-    );
+    devLog(`${index + 1} ${message.role}:`, message.content.substring(0, 70));
   });
 
   return result;

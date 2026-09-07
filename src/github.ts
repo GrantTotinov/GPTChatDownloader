@@ -396,13 +396,28 @@ export async function saveFileToRepo(
    * Cyrillic/UTF-8 (Bulgarian, per Grant's usual conversations)
    * - encode to UTF-8 bytes first via TextEncoder, then to
    * base64, so non-ASCII content survives the round trip.
+   *
+   * Building the intermediate "binary" string one
+   * String.fromCharCode(byte) call at a time is O(n) calls
+   * for n bytes, which gets slow for long conversations.
+   * String.fromCharCode accepts many arguments at once, so
+   * decoding in fixed-size chunks cuts that down to
+   * ceil(n / CHUNK_SIZE) calls instead - a few thousand
+   * chunks instead of potentially millions of single-byte
+   * calls for a very large export. The chunk size is kept
+   * well under engines' function-argument limits (which vary,
+   * but problems start well beyond 100k) to stay safe.
    */
   const utf8Bytes = new TextEncoder().encode(content);
 
+  const CHUNK_SIZE = 8192;
+
   let binary = "";
 
-  for (const byte of utf8Bytes) {
-    binary += String.fromCharCode(byte);
+  for (let offset = 0; offset < utf8Bytes.length; offset += CHUNK_SIZE) {
+    const chunk = utf8Bytes.subarray(offset, offset + CHUNK_SIZE);
+
+    binary += String.fromCharCode(...chunk);
   }
 
   const base64Content = btoa(binary);
@@ -420,6 +435,52 @@ export async function saveFileToRepo(
       }),
     },
   );
+
+  if (response.status === 409) {
+    /*
+     * 409 here means the file's sha changed between our GET
+     * and this PUT - most likely because another save (e.g.
+     * a second popup instance, or a double-click that raced
+     * past the UI's own busy-state guard) wrote to the same
+     * path in between. Retry once with a fresh sha: if the
+     * conflicting write finished, this second attempt reads
+     * the now-current sha and succeeds; if not, the ordinary
+     * error path below still applies.
+     */
+    const retryExisting = await githubApiRequest(
+      `/repos/${fullName}/contents/${encodeURIComponent(path)}`,
+    );
+
+    const retrySha = retryExisting.ok
+      ? ((await retryExisting.json()) as { sha?: string }).sha
+      : undefined;
+
+    const retryResponse = await githubApiRequest(
+      `/repos/${fullName}/contents/${encodeURIComponent(path)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          message: `Update ${filename} via GPTChatDownloader`,
+          content: base64Content,
+          sha: retrySha,
+        }),
+      },
+    );
+
+    if (!retryResponse.ok) {
+      throw new Error(
+        "Another save to this file happened at the same time and the retry also failed. Please try saving again.",
+      );
+    }
+
+    const retryData = (await retryResponse.json()) as {
+      content?: { html_url?: string };
+    };
+
+    return {
+      htmlUrl: retryData.content?.html_url ?? `https://github.com/${fullName}`,
+    };
+  }
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
