@@ -13,6 +13,38 @@ const includeTimestampInput = document.getElementById(
   "includeTimestamp",
 ) as HTMLInputElement;
 
+const githubStatusLabel = document.getElementById(
+  "github-status",
+) as HTMLParagraphElement;
+
+const githubConnectButton = document.getElementById(
+  "github-connect",
+) as HTMLButtonElement;
+
+const githubDisconnectButton = document.getElementById(
+  "github-disconnect",
+) as HTMLButtonElement;
+
+const githubOverlay = document.getElementById(
+  "github-overlay",
+) as HTMLDivElement;
+
+const githubOverlayCode = document.getElementById(
+  "github-overlay-code",
+) as HTMLParagraphElement;
+
+const githubOverlayError = document.getElementById(
+  "github-overlay-error",
+) as HTMLParagraphElement;
+
+const githubOverlaySpinner = document.getElementById(
+  "github-overlay-spinner",
+) as HTMLDivElement;
+
+const githubOverlayCancelButton = document.getElementById(
+  "github-overlay-cancel",
+) as HTMLButtonElement;
+
 function getRadioValue<T extends string>(name: string, fallback: T): T {
   const checked = document.querySelector<HTMLInputElement>(
     `input[name="${name}"]:checked`,
@@ -66,5 +98,150 @@ saveButton.addEventListener("click", async () => {
     statusLabel.classList.remove("visible");
   }, 1500);
 });
+
+/*
+ * ---------------------------------------------------------
+ * GITHUB CONNECTION
+ * ---------------------------------------------------------
+ */
+
+function renderGithubDisconnected(): void {
+  githubStatusLabel.textContent = "Save exports straight to a GitHub repo.";
+  githubStatusLabel.classList.remove("connected");
+  githubConnectButton.hidden = false;
+  githubConnectButton.disabled = false;
+  githubConnectButton.textContent = "Connect GitHub";
+  githubDisconnectButton.hidden = true;
+}
+
+function renderGithubConnected(login: string): void {
+  githubStatusLabel.textContent = `Connected as ${login}`;
+  githubStatusLabel.classList.add("connected");
+  githubConnectButton.hidden = true;
+  githubDisconnectButton.hidden = false;
+}
+
+async function refreshGithubStatus(): Promise<void> {
+  const response = await chrome.runtime.sendMessage({
+    type: "GITHUB_GET_STATUS",
+  });
+
+  if (response?.success && response.data?.connected) {
+    renderGithubConnected(response.data.login);
+  } else {
+    renderGithubDisconnected();
+  }
+}
+
+/*
+ * -----------------------------------------------------------
+ * DEVICE CODE OVERLAY
+ * -----------------------------------------------------------
+ *
+ * This is the one moment in the whole extension that gets a
+ * full-screen takeover: the person is about to alt-tab to a
+ * GitHub tab, so the code needs to be the single, unmissable
+ * thing on screen while they do that.
+ */
+
+function openGithubOverlay(userCode: string): void {
+  githubOverlayCode.textContent = userCode;
+  githubOverlayError.style.display = "none";
+  githubOverlaySpinner.style.display = "block";
+  githubOverlay.classList.add("open");
+}
+
+function closeGithubOverlay(): void {
+  githubOverlay.classList.remove("open");
+}
+
+function showGithubOverlayError(message: string): void {
+  githubOverlayError.textContent = message;
+  githubOverlayError.style.display = "block";
+  githubOverlaySpinner.style.display = "none";
+}
+
+githubOverlayCancelButton.addEventListener("click", () => {
+  /*
+   * This only dismisses the overlay - it doesn't cancel the
+   * poll running in background.ts (there's no GitHub API to
+   * cancel a device code once issued anyway; it simply
+   * expires on its own after expires_in seconds). If the
+   * person does go on to authorize after dismissing, the
+   * token is still stored when the poll resolves, and
+   * refreshGithubStatus() picks it up the next time this
+   * page opens.
+   */
+  closeGithubOverlay();
+  githubConnectButton.disabled = false;
+  githubConnectButton.textContent = "Connect GitHub";
+});
+
+githubConnectButton.addEventListener("click", async () => {
+  githubConnectButton.disabled = true;
+  githubConnectButton.textContent = "Starting...";
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "GITHUB_START_AUTH",
+    });
+
+    if (!response?.success) {
+      throw new Error(response?.error ?? "Failed to start GitHub sign-in.");
+    }
+
+    const { userCode, verificationUri } = response.data;
+
+    openGithubOverlay(userCode);
+
+    window.open(verificationUri, "_blank", "noopener,noreferrer");
+  } catch (error) {
+    console.error("GPTChatDownloader: GitHub auth start failed", error);
+
+    githubStatusLabel.textContent =
+      error instanceof Error
+        ? error.message
+        : "Failed to start GitHub sign-in.";
+
+    githubConnectButton.disabled = false;
+    githubConnectButton.textContent = "Connect GitHub";
+  }
+});
+
+githubDisconnectButton.addEventListener("click", async () => {
+  githubDisconnectButton.disabled = true;
+
+  try {
+    await chrome.runtime.sendMessage({ type: "GITHUB_DISCONNECT" });
+  } finally {
+    githubDisconnectButton.disabled = false;
+    renderGithubDisconnected();
+  }
+});
+
+/*
+ * The device-flow poll happening in background.ts finishes
+ * independently of this page being open. Listen for its
+ * result so the UI updates live if the person authorizes
+ * while this options page is still open; if they authorize
+ * after closing it, refreshGithubStatus() on next open will
+ * pick up the already-stored token instead.
+ */
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type !== "GITHUB_AUTH_COMPLETE") {
+    return;
+  }
+
+  if (message.success) {
+    closeGithubOverlay();
+    void refreshGithubStatus();
+  } else {
+    showGithubOverlayError(message.error ?? "GitHub sign-in failed.");
+    githubConnectButton.disabled = false;
+    githubConnectButton.textContent = "Connect GitHub";
+  }
+});
+
+void refreshGithubStatus();
 
 init();

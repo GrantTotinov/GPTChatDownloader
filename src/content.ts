@@ -1,6 +1,6 @@
 /*
  * =========================================================
- * GPTExport - content.ts
+ * GPTChatDownloader - content.ts
  * =========================================================
  *
  * The content script:
@@ -21,7 +21,7 @@
  */
 
 function injectPageBridge(): void {
-  if (document.documentElement.dataset.gptExportBridgeInjected === "true") {
+  if (document.documentElement.dataset.GPTChatDownloaderBridgeInjected === "true") {
     return;
   }
 
@@ -29,21 +29,21 @@ function injectPageBridge(): void {
 
   script.src = chrome.runtime.getURL("pageBridge.js");
 
-  script.dataset.gptExport = "page-bridge";
+  script.dataset.GPTChatDownloader = "page-bridge";
 
   script.onload = () => {
     script.remove();
 
-    console.log("GPTExport: page bridge injected");
+    console.log("GPTChatDownloader: page bridge injected");
   };
 
   script.onerror = () => {
-    console.error("GPTExport: failed to inject page bridge");
+    console.error("GPTChatDownloader: failed to inject page bridge");
   };
 
   (document.head || document.documentElement).appendChild(script);
 
-  document.documentElement.dataset.gptExportBridgeInjected = "true";
+  document.documentElement.dataset.GPTChatDownloaderBridgeInjected = "true";
 }
 
 injectPageBridge();
@@ -485,7 +485,7 @@ function fetchConversationPage(url: string): Promise<ConversationPage> {
 
       const data = event.data;
 
-      if (!data || data.source !== "GPTExport") {
+      if (!data || data.source !== "GPTChatDownloader") {
         return;
       }
 
@@ -493,21 +493,21 @@ function fetchConversationPage(url: string): Promise<ConversationPage> {
         return;
       }
 
-      if (data.type === "GPTEXPORT_API_ERROR") {
+      if (data.type === "GPTChatDownloader_API_ERROR") {
         finishError(
-          new Error(data.error ?? "Unknown error from GPTExport page bridge."),
+          new Error(data.error ?? "Unknown error from GPTChatDownloader page bridge."),
         );
 
         return;
       }
 
-      if (data.type !== "GPTEXPORT_API_RESPONSE") {
+      if (data.type !== "GPTChatDownloader_API_RESPONSE") {
         return;
       }
 
       if (!data.data) {
         finishError(
-          new Error("GPTExport page bridge returned an empty API response."),
+          new Error("GPTChatDownloader page bridge returned an empty API response."),
         );
 
         return;
@@ -526,12 +526,12 @@ function fetchConversationPage(url: string): Promise<ConversationPage> {
 
     window.addEventListener("message", handleMessage);
 
-    console.log("GPTExport: requesting API page through bridge", url);
+    console.log("GPTChatDownloader: requesting API page through bridge", url);
 
     window.postMessage(
       {
-        source: "GPTExport",
-        type: "GPTEXPORT_API_REQUEST",
+        source: "GPTChatDownloader",
+        type: "GPTChatDownloader_API_REQUEST",
         requestId,
         url,
       },
@@ -551,7 +551,7 @@ function fetchConversationPage(url: string): Promise<ConversationPage> {
 
       finishError(
         new Error(
-          "GPTExport page bridge timed out while requesting the conversation API.",
+          "GPTChatDownloader page bridge timed out while requesting the conversation API.",
         ),
       );
     }, 30000);
@@ -594,14 +594,14 @@ window.addEventListener("message", (event) => {
     return;
   }
 
-  if (!event.data || event.data.source !== "GPTExport") {
+  if (!event.data || event.data.source !== "GPTChatDownloader") {
     return;
   }
 
   if (event.data.type === "BRIDGE_READY") {
     bridgeReady = true;
 
-    console.log("GPTExport: page bridge ready");
+    console.log("GPTChatDownloader: page bridge ready");
   }
 });
 
@@ -647,7 +647,7 @@ async function loadEntireConversation(): Promise<Message[]> {
     );
   }
 
-  console.log("GPTExport: API conversation ID", conversationId);
+  console.log("GPTChatDownloader: API conversation ID", conversationId);
 
   /*
    * -----------------------------------------------------
@@ -668,7 +668,7 @@ async function loadEntireConversation(): Promise<Message[]> {
     const messages = currentPage.messages ?? [];
 
     console.log(
-      "GPTExport: API page contains",
+      "GPTChatDownloader: API page contains",
       messages.length,
       "raw messages",
     );
@@ -709,7 +709,7 @@ async function loadEntireConversation(): Promise<Message[]> {
   collectPage(page);
 
   console.log(
-    `GPTExport: API page ${pageNumber}, ` + `collected=${collected.size}`,
+    `GPTChatDownloader: API page ${pageNumber}, ` + `collected=${collected.size}`,
   );
 
   /*
@@ -753,7 +753,7 @@ async function loadEntireConversation(): Promise<Message[]> {
     collectPage(page);
 
     console.log(
-      `GPTExport: API page ${pageNumber}, ` + `collected=${collected.size}`,
+      `GPTChatDownloader: API page ${pageNumber}, ` + `collected=${collected.size}`,
     );
 
     /*
@@ -776,11 +776,11 @@ async function loadEntireConversation(): Promise<Message[]> {
 
   if (!currentNode) {
     console.warn(
-      "GPTExport: API response did not include current_node; using chronological fallback",
+      "GPTChatDownloader: API response did not include current_node; using chronological fallback",
     );
   }
 
-  console.log("GPTExport: resolved active conversation", {
+  console.log("GPTChatDownloader: resolved active conversation", {
     currentNode,
     rawMessages: rawById.size,
     messages: messages.length,
@@ -819,7 +819,7 @@ async function loadEntireConversation(): Promise<Message[]> {
    * -----------------------------------------------------
    */
 
-  console.log("GPTExport: API export complete", {
+  console.log("GPTChatDownloader: API export complete", {
     conversationId,
     pages: pageNumber + 1,
     messages: result.length,
@@ -841,13 +841,13 @@ async function loadEntireConversation(): Promise<Message[]> {
  * ---------------------------------------------------------
  */
 
-console.log("GPTExport loaded");
+console.log("GPTChatDownloader loaded");
 
-console.log("GPTExport: ready");
+console.log("GPTChatDownloader: ready");
 
 window.postMessage(
   {
-    source: "GPTExport",
+    source: "GPTChatDownloader",
     type: "READY",
   },
   "*",
@@ -867,7 +867,7 @@ let inFlightLoad: Promise<Message[]> | null = null;
 function loadEntireConversationSingleFlight(): Promise<Message[]> {
   if (inFlightLoad) {
     console.log(
-      "GPTExport: LOAD_CONVERSATION already in progress, reusing existing run",
+      "GPTChatDownloader: LOAD_CONVERSATION already in progress, reusing existing run",
     );
 
     return inFlightLoad;
@@ -902,11 +902,11 @@ chrome.runtime.onMessage.addListener(
       return false;
     }
 
-    console.log("GPTExport: LOAD_CONVERSATION received");
+    console.log("GPTChatDownloader: LOAD_CONVERSATION received");
 
     loadEntireConversationSingleFlight()
       .then((result) => {
-        console.log("GPTExport: sending conversation", result);
+        console.log("GPTChatDownloader: sending conversation", result);
 
         sendResponse({
           success: true,
@@ -914,7 +914,7 @@ chrome.runtime.onMessage.addListener(
         });
       })
       .catch((error) => {
-        console.error("GPTExport: failed to load conversation", error);
+        console.error("GPTChatDownloader: failed to load conversation", error);
 
         sendResponse({
           success: false,

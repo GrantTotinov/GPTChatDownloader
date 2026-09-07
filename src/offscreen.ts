@@ -4,7 +4,7 @@ function copyUsingExecCommand(text: string): boolean {
   ) as HTMLTextAreaElement | null;
 
   if (!textarea) {
-    console.error("GPTExport: clipboard-helper textarea missing");
+    console.error("GPTChatDownloader: clipboard-helper textarea missing");
 
     return false;
   }
@@ -34,13 +34,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       throw new Error("execCommand('copy') returned false");
     }
 
-    console.log("GPTExport: offscreen clipboard write successful");
+    console.log("GPTChatDownloader: offscreen clipboard write successful");
 
     sendResponse({
       success: true,
     });
   } catch (error) {
-    console.error("GPTExport: offscreen clipboard failed", error);
+    console.error("GPTChatDownloader: offscreen clipboard failed", error);
 
     sendResponse({
       success: false,

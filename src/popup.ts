@@ -23,11 +23,36 @@ const exportTxtButton = document.getElementById(
   "export-txt",
 ) as HTMLButtonElement;
 
+const githubToggleButton = document.getElementById(
+  "github-toggle",
+) as HTMLButtonElement;
+
+const githubPanel = document.getElementById("github-panel") as HTMLDivElement;
+
+const githubPanelMessage = document.getElementById(
+  "github-panel-message",
+) as HTMLParagraphElement;
+
+const githubRepoSelect = document.getElementById(
+  "github-repo-select",
+) as HTMLSelectElement;
+
+const githubPanelSaveButton = document.getElementById(
+  "github-panel-save",
+) as HTMLButtonElement;
+
 const optionsLink = document.getElementById(
   "options-link",
 ) as HTMLAnchorElement;
 
-const allButtons = [copyButton, exportButton, exportMdButton, exportTxtButton];
+const allButtons = [
+  copyButton,
+  exportButton,
+  exportMdButton,
+  exportTxtButton,
+  githubToggleButton,
+  githubPanelSaveButton,
+];
 
 optionsLink.addEventListener("click", (event) => {
   event.preventDefault();
@@ -40,6 +65,7 @@ optionsLink.addEventListener("click", (event) => {
  * ---------------------------------------------------------
  */
 exportButton.addEventListener("click", () => {
+  closeGithubPanel();
   exportMenu.classList.toggle("open");
 });
 
@@ -74,9 +100,10 @@ function resetButtons(): void {
   }
 
   copyButton.textContent = "Copy Conversation";
-  exportButton.textContent = "Export Conversation ▾";
+  exportButton.textContent = "Export ▾";
   exportMdButton.textContent = "Export as .md";
   exportTxtButton.textContent = "Export as .txt";
+  githubPanelSaveButton.textContent = "Save to exports/";
 }
 
 function showResult(button: HTMLButtonElement, text: string, ms: number): void {
@@ -174,7 +201,7 @@ async function fetchConversationMarkdown(
     throw new Error("Open a chatgpt.com conversation first");
   }
 
-  console.log("GPTExport: requesting conversation");
+  console.log("GPTChatDownloader: requesting conversation");
 
   activeButton = button;
 
@@ -193,7 +220,7 @@ async function fetchConversationMarkdown(
      * tab and retry once.
      */
     console.warn(
-      "GPTExport: no content script, reloading tab and retrying",
+      "GPTChatDownloader: no content script, reloading tab and retrying",
       sendError,
     );
 
@@ -212,7 +239,7 @@ async function fetchConversationMarkdown(
 
   const messages = response.data as Message[];
 
-  console.log(`GPTExport: received ${messages.length} messages`);
+  console.log(`GPTChatDownloader: received ${messages.length} messages`);
 
   if (messages.length === 0) {
     throw new Error("No messages found in this conversation");
@@ -250,7 +277,7 @@ async function fetchConversationMarkdown(
       })
       .join(SEPARATOR_TEXT[settings.messageSeparator]);
 
-  console.log("GPTExport: generated markdown");
+  console.log("GPTChatDownloader: generated markdown");
 
   return { markdown, tabTitle: tab.title };
 }
@@ -261,7 +288,7 @@ async function fetchConversationMarkdown(
  * ---------------------------------------------------------
  */
 copyButton.addEventListener("click", async () => {
-  console.log("GPTExport: copy clicked");
+  console.log("GPTChatDownloader: copy clicked");
 
   closeExportMenu();
   setBusy(copyButton, "Loading...");
@@ -274,7 +301,7 @@ copyButton.addEventListener("click", async () => {
       data: markdown,
     });
 
-    console.log("GPTExport: clipboard response", copyResponse);
+    console.log("GPTChatDownloader: clipboard response", copyResponse);
 
     if (!copyResponse?.success) {
       throw new Error(copyResponse?.error ?? "Failed to copy markdown");
@@ -282,7 +309,7 @@ copyButton.addEventListener("click", async () => {
 
     showResult(copyButton, "Copied!", 1500);
   } catch (error) {
-    console.error("GPTExport: copy failed", error);
+    console.error("GPTChatDownloader: copy failed", error);
 
     const message = error instanceof Error ? error.message : String(error);
 
@@ -325,11 +352,11 @@ async function downloadAs(
       saveAs: false,
     });
 
-    console.log("GPTExport: download started", downloadId);
+    console.log("GPTChatDownloader: download started", downloadId);
 
     showResult(button, "Downloaded!", 1500);
   } catch (error) {
-    console.error("GPTExport: download failed", error);
+    console.error("GPTChatDownloader: download failed", error);
 
     const message = error instanceof Error ? error.message : String(error);
 
@@ -351,11 +378,158 @@ async function downloadAs(
 }
 
 exportMdButton.addEventListener("click", () => {
-  console.log("GPTExport: export .md clicked");
+  console.log("GPTChatDownloader: export .md clicked");
   void downloadAs(exportMdButton, "md");
 });
 
 exportTxtButton.addEventListener("click", () => {
-  console.log("GPTExport: export .txt clicked");
+  console.log("GPTChatDownloader: export .txt clicked");
   void downloadAs(exportTxtButton, "txt");
+});
+
+/*
+ * ---------------------------------------------------------
+ * SAVE TO GITHUB
+ * ---------------------------------------------------------
+ *
+ * "Save to GitHub" in the export menu opens a small inline
+ * panel (there's no room in a 220px popup for a separate
+ * picker page) with a repo <select> and a Save button. The
+ * panel is populated lazily, only when opened, so a person
+ * who never uses this feature never pays for a GITHUB_LIST_REPOS
+ * round trip.
+ */
+
+interface GitHubRepoOption {
+  full_name: string;
+  name: string;
+}
+
+function closeGithubPanel(): void {
+  githubPanel.classList.remove("open");
+}
+
+async function openGithubPanel(): Promise<void> {
+  closeExportMenu();
+  githubPanel.classList.add("open");
+
+  githubPanelMessage.textContent = "Loading your repos...";
+  githubRepoSelect.innerHTML = "";
+  githubRepoSelect.disabled = true;
+  githubPanelSaveButton.disabled = true;
+
+  const statusResponse = await chrome.runtime.sendMessage({
+    type: "GITHUB_GET_STATUS",
+  });
+
+  if (!statusResponse?.success || !statusResponse.data?.connected) {
+    githubPanelMessage.innerHTML =
+      'Not connected. Open <a href="#" id="github-panel-settings-link">Settings</a> to connect GitHub first.';
+
+    const settingsLink = document.getElementById("github-panel-settings-link");
+
+    settingsLink?.addEventListener("click", (event) => {
+      event.preventDefault();
+      chrome.runtime.openOptionsPage();
+    });
+
+    return;
+  }
+
+  const reposResponse = await chrome.runtime.sendMessage({
+    type: "GITHUB_LIST_REPOS",
+  });
+
+  if (!reposResponse?.success) {
+    githubPanelMessage.textContent =
+      reposResponse?.error ?? "Failed to load repos.";
+
+    return;
+  }
+
+  const repos = reposResponse.data as GitHubRepoOption[];
+
+  if (repos.length === 0) {
+    githubPanelMessage.textContent = "No repos found that you can push to.";
+
+    return;
+  }
+
+  githubPanelMessage.textContent = "Choose a repo to save into.";
+
+  for (const repo of repos) {
+    const option = document.createElement("option");
+    option.value = repo.full_name;
+    option.textContent = repo.full_name;
+    githubRepoSelect.appendChild(option);
+  }
+
+  githubRepoSelect.disabled = false;
+  githubPanelSaveButton.disabled = false;
+}
+
+githubToggleButton.addEventListener("click", () => {
+  console.log("GPTChatDownloader: GitHub toggle clicked");
+
+  if (githubPanel.classList.contains("open")) {
+    closeGithubPanel();
+
+    return;
+  }
+
+  void openGithubPanel();
+});
+
+document.addEventListener("click", (event) => {
+  const target = event.target as Node;
+
+  if (!githubToggleButton.contains(target) && !githubPanel.contains(target)) {
+    closeGithubPanel();
+  }
+});
+
+githubPanelSaveButton.addEventListener("click", async () => {
+  const fullName = githubRepoSelect.value;
+
+  if (!fullName) {
+    return;
+  }
+
+  setBusy(githubPanelSaveButton, "Saving...");
+
+  try {
+    const { markdown, tabTitle } = await fetchConversationMarkdown(
+      githubPanelSaveButton,
+    );
+
+    const filename = buildFilename(tabTitle, "md");
+
+    const saveResponse = await chrome.runtime.sendMessage({
+      type: "GITHUB_SAVE_FILE",
+      fullName,
+      filename,
+      content: markdown,
+    });
+
+    if (!saveResponse?.success) {
+      throw new Error(saveResponse?.error ?? "Failed to save to GitHub");
+    }
+
+    console.log("GPTChatDownloader: saved to GitHub", saveResponse.data);
+
+    closeGithubPanel();
+    showResult(githubPanelSaveButton, "Saved!", 1500);
+  } catch (error) {
+    console.error("GPTChatDownloader: GitHub save failed", error);
+
+    const message = error instanceof Error ? error.message : String(error);
+
+    showResult(
+      githubPanelSaveButton,
+      message.length < 40 ? message : "Error",
+      2500,
+    );
+  } finally {
+    activeButton = null;
+  }
 });

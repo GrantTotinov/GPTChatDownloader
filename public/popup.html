@@ -3,48 +3,130 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GPTExport</title>
+    <title>GPTChatDownloader</title>
     <style>
+      :root {
+        --surface: #ffffff;
+        --canvas: #f6f8fa;
+        --border: #d0d7de;
+        --text: #1b1f24;
+        --text-muted: #636c76;
+        --accent: #10a37f;
+        --accent-hover: #0d8e6d;
+        --github: #24292e;
+        --github-hover: #1b1f23;
+        --radius: 6px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        width: 220px;
-        padding: 12px;
+        font-size: 13px;
+        color: var(--text);
+        width: 240px;
+        padding: 14px;
         margin: 0;
+        background: var(--surface);
       }
 
       button {
         display: block;
         width: 100%;
-        padding: 8px 10px;
-        border: 1px solid #d0d0d0;
-        border-radius: 6px;
-        background: #ffffff;
+        padding: 9px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        color: var(--text);
         cursor: pointer;
+        font-family: inherit;
         font-size: 13px;
+        font-weight: 500;
+        transition: background 0.12s ease;
       }
 
       button:hover:not(:disabled) {
-        background: #f4f4f4;
+        background: var(--canvas);
       }
 
       button:disabled {
         cursor: default;
-        opacity: 0.7;
+        opacity: 0.6;
       }
 
+      button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+
+      /*
+       * ---------------------------------------------------
+       * PRIMARY ROW: Copy Conversation
+       * ---------------------------------------------------
+       */
+
       #copy {
-        background: #10a37f;
+        background: var(--accent);
         color: #ffffff;
-        border-color: #10a37f;
+        border-color: var(--accent);
         margin-bottom: 8px;
       }
 
       #copy:hover:not(:disabled) {
-        background: #0d8e6d;
+        background: var(--accent-hover);
+      }
+
+      /*
+       * ---------------------------------------------------
+       * SECOND ROW: Export ▾ and GitHub, as peer actions
+       * ---------------------------------------------------
+       *
+       * Previously "Save to GitHub" lived as a third,
+       * hidden item inside the Export dropdown. Promoted
+       * here to a visible primary action alongside Export,
+       * since saving straight to a repo is a first-class
+       * export destination, not an export FORMAT (the
+       * dropdown is specifically for file formats: .md/.txt).
+       */
+
+      .action-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .action-row #export-wrapper {
+        flex: 3;
+      }
+
+      .action-row #github-toggle {
+        flex: 2;
       }
 
       #export-wrapper {
         position: relative;
+      }
+
+      #github-toggle {
+        background: var(--github);
+        color: #ffffff;
+        border-color: var(--github);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      #github-toggle:hover:not(:disabled) {
+        background: var(--github-hover);
+      }
+
+      #github-toggle svg {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
       }
 
       #export-menu {
@@ -53,11 +135,11 @@
         top: calc(100% + 4px);
         left: 0;
         right: 0;
-        background: #ffffff;
-        border: 1px solid #d0d0d0;
-        border-radius: 6px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
         overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 4px 12px rgba(27, 31, 36, 0.12);
         z-index: 10;
       }
 
@@ -73,19 +155,74 @@
       }
 
       #export-menu button:not(:last-child) {
-        border-bottom: 1px solid #eeeeee;
+        border-bottom: 1px solid var(--canvas);
+      }
+
+      /*
+       * ---------------------------------------------------
+       * GITHUB REPO PANEL
+       * ---------------------------------------------------
+       */
+
+      #github-panel {
+        display: none;
+        margin-bottom: 8px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--canvas);
+      }
+
+      #github-panel.open {
+        display: block;
+      }
+
+      #github-panel-message {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin: 0 0 8px 0;
+        line-height: 1.4;
+      }
+
+      #github-panel-message a {
+        color: var(--accent);
+        font-weight: 500;
+      }
+
+      #github-repo-select {
+        width: 100%;
+        font-family: inherit;
+        font-size: 13px;
+        padding: 7px 8px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        margin-bottom: 8px;
+        box-sizing: border-box;
+        background: var(--surface);
+        color: var(--text);
+      }
+
+      #github-panel-save {
+        background: var(--github);
+        color: #ffffff;
+        border-color: var(--github);
+      }
+
+      #github-panel-save:hover:not(:disabled) {
+        background: var(--github-hover);
       }
 
       .footer-link {
         display: block;
         text-align: center;
-        margin-top: 10px;
+        margin-top: 4px;
         font-size: 11px;
-        color: #888888;
+        color: var(--text-muted);
         text-decoration: none;
       }
 
       .footer-link:hover {
+        color: var(--text);
         text-decoration: underline;
       }
     </style>
@@ -93,12 +230,29 @@
   <body>
     <button id="copy">Copy Conversation</button>
 
-    <div id="export-wrapper">
-      <button id="export">Export Conversation ▾</button>
-      <div id="export-menu">
-        <button id="export-md">Export as .md</button>
-        <button id="export-txt">Export as .txt</button>
+    <div class="action-row">
+      <div id="export-wrapper">
+        <button id="export">Export ▾</button>
+        <div id="export-menu">
+          <button id="export-md">Export as .md</button>
+          <button id="export-txt">Export as .txt</button>
+        </div>
       </div>
+
+      <button id="github-toggle">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+          />
+        </svg>
+        GitHub
+      </button>
+    </div>
+
+    <div id="github-panel">
+      <p id="github-panel-message">Choose a repo to save into.</p>
+      <select id="github-repo-select"></select>
+      <button id="github-panel-save">Save to exports/</button>
     </div>
 
     <a class="footer-link" id="options-link" href="#">Settings</a>

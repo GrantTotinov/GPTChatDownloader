@@ -1,5 +1,5 @@
 /*
- * GPTExport - MAIN world bridge
+ * GPTChatDownloader - MAIN world bridge
  *
  * This file runs in the ChatGPT page's MAIN world.
  *
@@ -90,11 +90,11 @@
         }
 
         console.log(
-          "GPTExport bridge: authenticated conversation request detected",
+          "GPTChatDownloader bridge: authenticated conversation request detected",
         );
       } catch (error) {
         console.warn(
-          "GPTExport bridge: could not inspect request headers",
+          "GPTChatDownloader bridge: could not inspect request headers",
           error,
         );
       }
@@ -116,7 +116,7 @@
     const response = await originalFetch(input, init);
 
     if (isConversationRequest && response.ok) {
-      console.log("GPTExport bridge: conversation response", response.status);
+      console.log("GPTChatDownloader bridge: conversation response", response.status);
     }
 
     return response;
@@ -124,14 +124,14 @@
 
   /*
    * ---------------------------------------------------------
-   * GPTExport API REQUEST
+   * GPTChatDownloader API REQUEST
    * ---------------------------------------------------------
    *
    * content.ts sends:
    *
    * {
-   *     source: "GPTExport",
-   *     type: "GPTEXPORT_API_REQUEST",
+   *     source: "GPTChatDownloader",
+   *     type: "GPTChatDownloader_API_REQUEST",
    *     requestId,
    *     url
    * }
@@ -147,12 +147,12 @@
     if (
       event.source !== window ||
       !event.data ||
-      event.data.source !== "GPTExport"
+      event.data.source !== "GPTChatDownloader"
     ) {
       return;
     }
 
-    if (event.data.type !== "GPTEXPORT_API_REQUEST") {
+    if (event.data.type !== "GPTChatDownloader_API_REQUEST") {
       return;
     }
 
@@ -169,8 +169,8 @@
     if (!url) {
       window.postMessage(
         {
-          source: "GPTExport",
-          type: "GPTEXPORT_API_ERROR",
+          source: "GPTChatDownloader",
+          type: "GPTChatDownloader_API_ERROR",
           requestId,
           error: "Missing API URL",
         },
@@ -183,8 +183,8 @@
     if (!isConversationUrl(url)) {
       window.postMessage(
         {
-          source: "GPTExport",
-          type: "GPTEXPORT_API_ERROR",
+          source: "GPTChatDownloader",
+          type: "GPTChatDownloader_API_ERROR",
           requestId,
           error: "Invalid conversation API URL",
         },
@@ -218,7 +218,7 @@
          */
         const headers = new Headers(authenticatedHeaders);
 
-        console.log("GPTExport bridge: requesting", url);
+        console.log("GPTChatDownloader bridge: requesting", url);
 
         /*
          * Use the original fetch function.
@@ -233,7 +233,7 @@
           headers,
         });
 
-        console.log("GPTExport bridge: API response", response.status);
+        console.log("GPTChatDownloader bridge: API response", response.status);
 
         if (!response.ok) {
           throw new Error(
@@ -248,20 +248,20 @@
          */
         window.postMessage(
           {
-            source: "GPTExport",
-            type: "GPTEXPORT_API_RESPONSE",
+            source: "GPTChatDownloader",
+            type: "GPTChatDownloader_API_RESPONSE",
             requestId,
             data,
           },
           "*",
         );
       } catch (error) {
-        console.error("GPTExport bridge: API request failed", error);
+        console.error("GPTChatDownloader bridge: API request failed", error);
 
         window.postMessage(
           {
-            source: "GPTExport",
-            type: "GPTEXPORT_API_ERROR",
+            source: "GPTChatDownloader",
+            type: "GPTChatDownloader_API_ERROR",
             requestId,
             error: error instanceof Error ? error.message : String(error),
           },
@@ -281,11 +281,11 @@
 
   window.postMessage(
     {
-      source: "GPTExport",
+      source: "GPTChatDownloader",
       type: "BRIDGE_READY",
     },
     "*",
   );
 
-  console.log("GPTExport bridge: installed");
+  console.log("GPTChatDownloader bridge: installed");
 })();
