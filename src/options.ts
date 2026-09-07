@@ -4,6 +4,11 @@ import {
   loadSettings,
   saveSettings,
 } from "./settings.ts";
+const devError = (...args: unknown[]): void => {
+  if (import.meta.env.DEV) {
+    console.error(...args);
+  }
+};
 
 const saveButton = document.getElementById("save") as HTMLButtonElement;
 
@@ -196,7 +201,7 @@ githubConnectButton.addEventListener("click", async () => {
 
     window.open(verificationUri, "_blank", "noopener,noreferrer");
   } catch (error) {
-    console.error("GPTChatDownloader: GitHub auth start failed", error);
+    devError("GPTChatDownloader: GitHub auth start failed", error);
 
     githubStatusLabel.textContent =
       error instanceof Error

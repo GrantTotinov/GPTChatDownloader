@@ -9,6 +9,24 @@
  */
 
 (() => {
+  const devLog = (...args: unknown[]): void => {
+    if (import.meta.env.DEV) {
+      console.log(...args);
+    }
+  };
+
+  const devWarn = (...args: unknown[]): void => {
+    if (import.meta.env.DEV) {
+      console.warn(...args);
+    }
+  };
+
+  const devError = (...args: unknown[]): void => {
+    if (import.meta.env.DEV) {
+      console.error(...args);
+    }
+  };
+
   const originalFetch = window.fetch;
 
   let authenticatedHeaders: Headers | null = null;
@@ -19,10 +37,118 @@
    * ---------------------------------------------------------
    */
 
+  const CONVERSATION_ID_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const CONVERSATION_PATH_PATTERN =
+    /^\/backend-api\/conversations\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/messages)?$/i;
+  const LEGACY_CONVERSATION_PATH_PATTERN =
+    /^\/backend-api\/conversation\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/messages)?$/i;
+  const MAX_CURSOR_LENGTH = 2048;
+  const MAX_REQUEST_ID_LENGTH = 100;
+  const RATE_LIMIT_WINDOW_MS = 10_000;
+  const MAX_REQUESTS_PER_WINDOW = 20;
+
+  let requestWindowStartedAt = Date.now();
+  let requestsInWindow = 0;
+
   function isConversationUrl(url: string): boolean {
+    try {
+      const parsed = new URL(url, window.location.origin);
+
+      if (
+        parsed.origin !== window.location.origin ||
+        (parsed.protocol !== "https:" && parsed.protocol !== "http:")
+      ) {
+        return false;
+      }
+
+      return (
+        CONVERSATION_PATH_PATTERN.test(parsed.pathname) ||
+        LEGACY_CONVERSATION_PATH_PATTERN.test(parsed.pathname)
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  function isValidConversationId(value: unknown): value is string {
+    return typeof value === "string" && CONVERSATION_ID_PATTERN.test(value);
+  }
+
+  function isValidCursor(value: unknown): value is string | null {
     return (
-      url.includes("/backend-api/conversations/") ||
-      url.includes("/backend-api/conversation/")
+      value === null ||
+      (typeof value === "string" &&
+        value.length > 0 &&
+        value.length <= MAX_CURSOR_LENGTH)
+    );
+  }
+
+  function isValidRequestId(value: unknown): value is string {
+    return (
+      typeof value === "string" &&
+      value.length > 0 &&
+      value.length <= MAX_REQUEST_ID_LENGTH
+    );
+  }
+
+  function allowRequest(): boolean {
+    const now = Date.now();
+
+    if (now - requestWindowStartedAt >= RATE_LIMIT_WINDOW_MS) {
+      requestWindowStartedAt = now;
+      requestsInWindow = 0;
+    }
+
+    if (requestsInWindow >= MAX_REQUESTS_PER_WINDOW) {
+      return false;
+    }
+
+    requestsInWindow++;
+
+    return true;
+  }
+
+  function buildConversationUrl(
+    conversationId: string,
+    cursor: string | null,
+  ): string {
+    const endpoint = cursor
+      ? `/backend-api/conversations/${conversationId}/messages`
+      : `/backend-api/conversations/${conversationId}`;
+    const params = new URLSearchParams({
+      include_has_versions: "true",
+      num_turns: "10",
+    });
+
+    if (cursor) {
+      params.set("before", cursor);
+    }
+
+    return `${endpoint}?${params.toString()}`;
+  }
+
+  function isApiRequestMessage(
+    value: unknown,
+  ): value is {
+    source: "GPTChatDownloader";
+    type: "GPTChatDownloader_API_REQUEST";
+    requestId: string;
+    conversationId: string;
+    cursor: string | null;
+  } {
+    if (!value || typeof value !== "object") {
+      return false;
+    }
+
+    const message = value as Record<string, unknown>;
+
+    return (
+      message.source === "GPTChatDownloader" &&
+      message.type === "GPTChatDownloader_API_REQUEST" &&
+      isValidRequestId(message.requestId) &&
+      isValidConversationId(message.conversationId) &&
+      isValidCursor(message.cursor)
     );
   }
 
@@ -55,19 +181,13 @@
    * Nothing is persisted to storage.
    */
 
-  window.fetch = async function (
+  window.fetch = function (
+    this: Window,
     input: RequestInfo | URL,
     init?: RequestInit,
   ): Promise<Response> {
     const url = getRequestUrl(input);
-
-    let isConversationRequest = false;
-
-    try {
-      isConversationRequest = isConversationUrl(url);
-    } catch {
-      isConversationRequest = false;
-    }
+    const isConversationRequest = isConversationUrl(url);
 
     /*
      * Capture authentication headers from the
@@ -89,11 +209,11 @@
           authenticatedHeaders = new Headers(init?.headers);
         }
 
-        console.log(
+        devLog(
           "GPTChatDownloader bridge: authenticated conversation request detected",
         );
       } catch (error) {
-        console.warn(
+        devWarn(
           "GPTChatDownloader bridge: could not inspect request headers",
           error,
         );
@@ -113,13 +233,7 @@
      *
      * "Request object already been used"
      */
-    const response = await originalFetch(input, init);
-
-    if (isConversationRequest && response.ok) {
-      console.log("GPTChatDownloader bridge: conversation response", response.status);
-    }
-
-    return response;
+    return Reflect.apply(originalFetch, this, [input, init]);
   };
 
   /*
@@ -133,7 +247,8 @@
    *     source: "GPTChatDownloader",
    *     type: "GPTChatDownloader_API_REQUEST",
    *     requestId,
-   *     url
+   *     conversationId,
+   *     cursor
    * }
    *
    * This listener performs the authenticated request
@@ -146,33 +261,18 @@
      */
     if (
       event.source !== window ||
-      !event.data ||
-      event.data.source !== "GPTChatDownloader"
+      !isApiRequestMessage(event.data)
     ) {
       return;
     }
 
-    if (event.data.type !== "GPTChatDownloader_API_REQUEST") {
-      return;
-    }
-
-    const requestId = String(event.data.requestId);
-
-    const url = String(event.data.url ?? "");
-
-    /*
-     * -------------------------------------------------
-     * VALIDATE URL
-     * -------------------------------------------------
-     */
-
-    if (!url) {
+    if (!allowRequest()) {
       window.postMessage(
         {
           source: "GPTChatDownloader",
           type: "GPTChatDownloader_API_ERROR",
-          requestId,
-          error: "Missing API URL",
+          requestId: event.data.requestId,
+          error: "Too many conversation API requests.",
         },
         "*",
       );
@@ -180,19 +280,11 @@
       return;
     }
 
-    if (!isConversationUrl(url)) {
-      window.postMessage(
-        {
-          source: "GPTChatDownloader",
-          type: "GPTChatDownloader_API_ERROR",
-          requestId,
-          error: "Invalid conversation API URL",
-        },
-        "*",
-      );
-
-      return;
-    }
+    const requestId = event.data.requestId;
+    const url = buildConversationUrl(
+      event.data.conversationId,
+      event.data.cursor,
+    );
 
     /*
      * -------------------------------------------------
@@ -218,8 +310,6 @@
          */
         const headers = new Headers(authenticatedHeaders);
 
-        console.log("GPTChatDownloader bridge: requesting", url);
-
         /*
          * Use the original fetch function.
          *
@@ -233,7 +323,7 @@
           headers,
         });
 
-        console.log("GPTChatDownloader bridge: API response", response.status);
+        devLog("GPTChatDownloader bridge: API response", response.status);
 
         if (!response.ok) {
           throw new Error(
@@ -256,7 +346,7 @@
           "*",
         );
       } catch (error) {
-        console.error("GPTChatDownloader bridge: API request failed", error);
+        devError("GPTChatDownloader bridge: API request failed");
 
         window.postMessage(
           {
@@ -287,5 +377,5 @@
     "*",
   );
 
-  console.log("GPTChatDownloader bridge: installed");
+  devLog("GPTChatDownloader bridge: installed");
 })();

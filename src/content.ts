@@ -14,6 +14,24 @@
  * No conversation credentials are stored by this file.
  */
 
+const devLog = (...args: unknown[]): void => {
+  if (import.meta.env.DEV) {
+    console.log(...args);
+  }
+};
+
+const devWarn = (...args: unknown[]): void => {
+  if (import.meta.env.DEV) {
+    console.warn(...args);
+  }
+};
+
+const devError = (...args: unknown[]): void => {
+  if (import.meta.env.DEV) {
+    console.error(...args);
+  }
+};
+
 /*
  * ---------------------------------------------------------
  * PAGE BRIDGE INJECTION
@@ -34,11 +52,11 @@ function injectPageBridge(): void {
   script.onload = () => {
     script.remove();
 
-    console.log("GPTChatDownloader: page bridge injected");
+    devLog("GPTChatDownloader: page bridge injected");
   };
 
   script.onerror = () => {
-    console.error("GPTChatDownloader: failed to inject page bridge");
+    devError("GPTChatDownloader: failed to inject page bridge");
   };
 
   (document.head || document.documentElement).appendChild(script);
@@ -458,14 +476,22 @@ interface BridgeResponse {
   error?: string;
 }
 
-function fetchConversationPage(url: string): Promise<ConversationPage> {
+function fetchConversationPage(
+  conversationId: string,
+  cursor: string | null,
+): Promise<ConversationPage> {
   return new Promise((resolve, reject) => {
     const requestId = crypto.randomUUID();
 
     let finished = false;
+    let timeoutId: number | undefined;
 
     const cleanup = (): void => {
       window.removeEventListener("message", handleMessage);
+
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
     };
 
     const finishError = (error: Error): void => {
@@ -526,14 +552,13 @@ function fetchConversationPage(url: string): Promise<ConversationPage> {
 
     window.addEventListener("message", handleMessage);
 
-    console.log("GPTChatDownloader: requesting API page through bridge", url);
-
     window.postMessage(
       {
         source: "GPTChatDownloader",
         type: "GPTChatDownloader_API_REQUEST",
         requestId,
-        url,
+        conversationId,
+        cursor,
       },
       "*",
     );
@@ -544,7 +569,7 @@ function fetchConversationPage(url: string): Promise<ConversationPage> {
      * If the bridge does not respond, don't leave
      * the Promise hanging forever.
      */
-    window.setTimeout(() => {
+    timeoutId = window.setTimeout(() => {
       if (finished) {
         return;
       }
@@ -601,7 +626,7 @@ window.addEventListener("message", (event) => {
   if (event.data.type === "BRIDGE_READY") {
     bridgeReady = true;
 
-    console.log("GPTChatDownloader: page bridge ready");
+    devLog("GPTChatDownloader: page bridge ready");
   }
 });
 
@@ -647,7 +672,7 @@ async function loadEntireConversation(): Promise<Message[]> {
     );
   }
 
-  console.log("GPTChatDownloader: API conversation ID", conversationId);
+  devLog("GPTChatDownloader: API conversation ID", conversationId);
 
   /*
    * -----------------------------------------------------
@@ -667,7 +692,7 @@ async function loadEntireConversation(): Promise<Message[]> {
   const collectPage = (currentPage: ConversationPage): void => {
     const messages = currentPage.messages ?? [];
 
-    console.log(
+    devLog(
       "GPTChatDownloader: API page contains",
       messages.length,
       "raw messages",
@@ -697,18 +722,14 @@ async function loadEntireConversation(): Promise<Message[]> {
    * -----------------------------------------------------
    */
 
-  const initialUrl =
-    `/backend-api/conversations/${conversationId}` +
-    `?include_has_versions=true&num_turns=10`;
-
-  let page = await fetchConversationPage(initialUrl);
+  let page = await fetchConversationPage(conversationId, null);
 
   let pageNumber = 0;
   const currentNode = page.current_node ?? null;
 
   collectPage(page);
 
-  console.log(
+  devLog(
     `GPTChatDownloader: API page ${pageNumber}, ` + `collected=${collected.size}`,
   );
 
@@ -743,16 +764,11 @@ async function loadEntireConversation(): Promise<Message[]> {
 
     pageNumber++;
 
-    const nextUrl =
-      `/backend-api/conversations/${conversationId}/messages` +
-      `?before=${encodeURIComponent(cursor)}` +
-      `&include_has_versions=true&num_turns=10`;
-
-    page = await fetchConversationPage(nextUrl);
+    page = await fetchConversationPage(conversationId, cursor);
 
     collectPage(page);
 
-    console.log(
+    devLog(
       `GPTChatDownloader: API page ${pageNumber}, ` + `collected=${collected.size}`,
     );
 
@@ -775,12 +791,12 @@ async function loadEntireConversation(): Promise<Message[]> {
   const messages = resolveActiveMessages(rawById, collected, currentNode);
 
   if (!currentNode) {
-    console.warn(
+    devWarn(
       "GPTChatDownloader: API response did not include current_node; using chronological fallback",
     );
   }
 
-  console.log("GPTChatDownloader: resolved active conversation", {
+  devLog("GPTChatDownloader: resolved active conversation", {
     currentNode,
     rawMessages: rawById.size,
     messages: messages.length,
@@ -819,14 +835,14 @@ async function loadEntireConversation(): Promise<Message[]> {
    * -----------------------------------------------------
    */
 
-  console.log("GPTChatDownloader: API export complete", {
+  devLog("GPTChatDownloader: API export complete", {
     conversationId,
     pages: pageNumber + 1,
     messages: result.length,
   });
 
   result.forEach((message, index) => {
-    console.log(
+    devLog(
       `${index + 1} ${message.role}:`,
       message.content.substring(0, 70),
     );
@@ -840,10 +856,6 @@ async function loadEntireConversation(): Promise<Message[]> {
  * READY
  * ---------------------------------------------------------
  */
-
-console.log("GPTChatDownloader loaded");
-
-console.log("GPTChatDownloader: ready");
 
 window.postMessage(
   {
@@ -866,7 +878,7 @@ let inFlightLoad: Promise<Message[]> | null = null;
 
 function loadEntireConversationSingleFlight(): Promise<Message[]> {
   if (inFlightLoad) {
-    console.log(
+    devLog(
       "GPTChatDownloader: LOAD_CONVERSATION already in progress, reusing existing run",
     );
 
@@ -902,11 +914,11 @@ chrome.runtime.onMessage.addListener(
       return false;
     }
 
-    console.log("GPTChatDownloader: LOAD_CONVERSATION received");
+    devLog("GPTChatDownloader: LOAD_CONVERSATION received");
 
     loadEntireConversationSingleFlight()
       .then((result) => {
-        console.log("GPTChatDownloader: sending conversation", result);
+        devLog("GPTChatDownloader: sending conversation", result);
 
         sendResponse({
           success: true,
@@ -914,7 +926,7 @@ chrome.runtime.onMessage.addListener(
         });
       })
       .catch((error) => {
-        console.error("GPTChatDownloader: failed to load conversation", error);
+        devError("GPTChatDownloader: failed to load conversation", error);
 
         sendResponse({
           success: false,

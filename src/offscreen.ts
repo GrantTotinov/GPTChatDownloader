@@ -1,10 +1,22 @@
+const devLog = (...args: unknown[]): void => {
+  if (import.meta.env.DEV) {
+    console.log(...args);
+  }
+};
+
+const devError = (...args: unknown[]): void => {
+  if (import.meta.env.DEV) {
+    console.error(...args);
+  }
+};
+
 function copyUsingExecCommand(text: string): boolean {
   const textarea = document.getElementById(
     "clipboard-helper",
   ) as HTMLTextAreaElement | null;
 
   if (!textarea) {
-    console.error("GPTChatDownloader: clipboard-helper textarea missing");
+    devError("GPTChatDownloader: clipboard-helper textarea missing");
 
     return false;
   }
@@ -34,13 +46,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       throw new Error("execCommand('copy') returned false");
     }
 
-    console.log("GPTChatDownloader: offscreen clipboard write successful");
+    devLog("GPTChatDownloader: offscreen clipboard write successful");
 
     sendResponse({
       success: true,
     });
   } catch (error) {
-    console.error("GPTChatDownloader: offscreen clipboard failed", error);
+    devError("GPTChatDownloader: offscreen clipboard failed", error);
 
     sendResponse({
       success: false,

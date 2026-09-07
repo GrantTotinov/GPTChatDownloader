@@ -1,6 +1,23 @@
 import { SEPARATOR_TEXT, loadSettings } from "./settings.ts";
 
 import { stripMarkdown } from "./markdown-strip.ts";
+const devLog = (...args: unknown[]): void => {
+  if (import.meta.env.DEV) {
+    console.log(...args);
+  }
+};
+
+const devWarn = (...args: unknown[]): void => {
+  if (import.meta.env.DEV) {
+    console.warn(...args);
+  }
+};
+
+const devError = (...args: unknown[]): void => {
+  if (import.meta.env.DEV) {
+    console.error(...args);
+  }
+};
 
 interface Message {
   id: string;
@@ -201,7 +218,7 @@ async function fetchConversationMarkdown(
     throw new Error("Open a chatgpt.com conversation first");
   }
 
-  console.log("GPTChatDownloader: requesting conversation");
+  devLog("GPTChatDownloader: requesting conversation");
 
   activeButton = button;
 
@@ -219,7 +236,7 @@ async function fetchConversationMarkdown(
      * after the tab was already open. Reload the
      * tab and retry once.
      */
-    console.warn(
+    devWarn(
       "GPTChatDownloader: no content script, reloading tab and retrying",
       sendError,
     );
@@ -239,7 +256,7 @@ async function fetchConversationMarkdown(
 
   const messages = response.data as Message[];
 
-  console.log(`GPTChatDownloader: received ${messages.length} messages`);
+  devLog(`GPTChatDownloader: received ${messages.length} messages`);
 
   if (messages.length === 0) {
     throw new Error("No messages found in this conversation");
@@ -277,7 +294,7 @@ async function fetchConversationMarkdown(
       })
       .join(SEPARATOR_TEXT[settings.messageSeparator]);
 
-  console.log("GPTChatDownloader: generated markdown");
+  devLog("GPTChatDownloader: generated markdown");
 
   return { markdown, tabTitle: tab.title };
 }
@@ -288,7 +305,7 @@ async function fetchConversationMarkdown(
  * ---------------------------------------------------------
  */
 copyButton.addEventListener("click", async () => {
-  console.log("GPTChatDownloader: copy clicked");
+  devLog("GPTChatDownloader: copy clicked");
 
   closeExportMenu();
   setBusy(copyButton, "Loading...");
@@ -301,7 +318,7 @@ copyButton.addEventListener("click", async () => {
       data: markdown,
     });
 
-    console.log("GPTChatDownloader: clipboard response", copyResponse);
+    devLog("GPTChatDownloader: clipboard response", copyResponse);
 
     if (!copyResponse?.success) {
       throw new Error(copyResponse?.error ?? "Failed to copy markdown");
@@ -309,7 +326,7 @@ copyButton.addEventListener("click", async () => {
 
     showResult(copyButton, "Copied!", 1500);
   } catch (error) {
-    console.error("GPTChatDownloader: copy failed", error);
+    devError("GPTChatDownloader: copy failed", error);
 
     const message = error instanceof Error ? error.message : String(error);
 
@@ -352,11 +369,11 @@ async function downloadAs(
       saveAs: false,
     });
 
-    console.log("GPTChatDownloader: download started", downloadId);
+    devLog("GPTChatDownloader: download started", downloadId);
 
     showResult(button, "Downloaded!", 1500);
   } catch (error) {
-    console.error("GPTChatDownloader: download failed", error);
+    devError("GPTChatDownloader: download failed", error);
 
     const message = error instanceof Error ? error.message : String(error);
 
@@ -378,12 +395,12 @@ async function downloadAs(
 }
 
 exportMdButton.addEventListener("click", () => {
-  console.log("GPTChatDownloader: export .md clicked");
+  devLog("GPTChatDownloader: export .md clicked");
   void downloadAs(exportMdButton, "md");
 });
 
 exportTxtButton.addEventListener("click", () => {
-  console.log("GPTChatDownloader: export .txt clicked");
+  devLog("GPTChatDownloader: export .txt clicked");
   void downloadAs(exportTxtButton, "txt");
 });
 
@@ -469,7 +486,7 @@ async function openGithubPanel(): Promise<void> {
 }
 
 githubToggleButton.addEventListener("click", () => {
-  console.log("GPTChatDownloader: GitHub toggle clicked");
+  devLog("GPTChatDownloader: GitHub toggle clicked");
 
   if (githubPanel.classList.contains("open")) {
     closeGithubPanel();
@@ -515,12 +532,12 @@ githubPanelSaveButton.addEventListener("click", async () => {
       throw new Error(saveResponse?.error ?? "Failed to save to GitHub");
     }
 
-    console.log("GPTChatDownloader: saved to GitHub", saveResponse.data);
+    devLog("GPTChatDownloader: saved to GitHub", saveResponse.data);
 
     closeGithubPanel();
     showResult(githubPanelSaveButton, "Saved!", 1500);
   } catch (error) {
-    console.error("GPTChatDownloader: GitHub save failed", error);
+    devError("GPTChatDownloader: GitHub save failed", error);
 
     const message = error instanceof Error ? error.message : String(error);
 

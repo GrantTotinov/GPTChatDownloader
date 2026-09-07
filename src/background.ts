@@ -7,6 +7,11 @@ import {
   listRepos,
   saveFileToRepo,
 } from "./github.ts";
+const devError = (...args: unknown[]): void => {
+  if (import.meta.env.DEV) {
+    console.error(...args);
+  }
+};
 
 async function setupOffscreenDocument(): Promise<void> {
   const existingContexts = await chrome.runtime.getContexts({
@@ -40,7 +45,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
       sendResponse(response);
     } catch (error) {
-      console.error("GPTChatDownloader: background clipboard failed", error);
+      devError("GPTChatDownloader: background clipboard failed", error);
 
       sendResponse({
         success: false,
