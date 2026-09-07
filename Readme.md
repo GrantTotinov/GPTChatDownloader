@@ -1,4 +1,4 @@
-# GPT Chat Downloader
+# GPTChatDownloader
 
 A Chrome extension that exports your ChatGPT conversations to Markdown or plain text, so you can keep a copy, share it, or drop it straight into a GitHub repo.
 
@@ -65,6 +65,10 @@ This uses GitHub's OAuth **device flow**, the same mechanism CLI tools like the 
 - GPTChatDownloader only works on `chatgpt.com`. If OpenAI changes their internal API, exports may break until the extension gets updated. That's the trade-off of not relying on the visible page content.
 - The GitHub integration needs `repo` access to create files, since GitHub's Contents API doesn't offer a narrower "just let me write files" scope. If that's more than you're comfortable granting, stick to the local `.md`/`.txt` export.
 - This is a side project, maintained when time allows. Bug reports and pull requests are welcome. If something breaks, an exported conversation ID or a browser console log helps a lot when trying to reproduce it.
+
+## Support
+
+Questions, bugs, or feature requests: open an issue on this repo, or email **granttotinov604@gmail.com** directly.
 
 ## License
 
