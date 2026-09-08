@@ -5,7 +5,8 @@
  *
  * GitHub integration: OAuth Device Flow authentication,
  * token storage, and the small set of GitHub REST API calls
- * needed to list repos and save an export as a file.
+ * needed to list repos, save an export as a file, and star
+ * the project repository.
  *
  * WHY DEVICE FLOW (not the redirect/web OAuth flow):
  *
@@ -65,6 +66,7 @@ const GITHUB_CLIENT_ID = "Ov23livM5zFifnOcvad6";
 const GITHUB_SCOPE = "repo";
 
 const STORAGE_KEY_TOKEN = "githubAccessToken";
+export const PROJECT_REPOSITORY = "GrantTotinov/GPTChatDownloader";
 
 /*
  * ---------------------------------------------------------
@@ -318,6 +320,31 @@ export async function getCurrentUser(): Promise<GitHubUser> {
   const data = (await response.json()) as GitHubUser;
 
   return data;
+}
+
+/*
+ * ---------------------------------------------------------
+ * STAR PROJECT
+ * ---------------------------------------------------------
+ *
+ * GitHub accepts an empty PUT to this endpoint to add a star
+ * for the authenticated user. If the current token does not
+ * have the required permission, the caller can fall back to
+ * opening the repository page.
+ */
+export async function starProject(): Promise<void> {
+  const response = await githubApiRequest(
+    `/user/starred/${PROJECT_REPOSITORY}`,
+    {
+      method: "PUT",
+    },
+  );
+
+  if (!response.ok && response.status !== 204) {
+    throw new Error(
+      `Failed to star repository: ${response.status} ${response.statusText}`,
+    );
+  }
 }
 
 /*

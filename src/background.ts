@@ -6,6 +6,7 @@ import {
   disconnectGitHub,
   listRepos,
   saveFileToRepo,
+  starProject,
 } from "./github.ts";
 const devError = (...args: unknown[]): void => {
   if (import.meta.env.DEV) {
@@ -120,6 +121,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
    * above. Without this, the channel closes
    * immediately and you get a DOMException.
    */
+  return true;
+});
+
+/*
+ * ---------------------------------------------------------
+ * GITHUB: STAR PROJECT
+ * ---------------------------------------------------------
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type !== "GITHUB_STAR_PROJECT") {
+    return false;
+  }
+
+  if (!isOwnExtensionSender(sender)) {
+    return false;
+  }
+
+  (async () => {
+    try {
+      await starProject();
+
+      sendResponse({ success: true });
+    } catch (error) {
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  })();
+
   return true;
 });
 

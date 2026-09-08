@@ -1,6 +1,7 @@
 import { SEPARATOR_TEXT, loadSettings } from "./settings.ts";
 
 import { stripMarkdown } from "./markdown-strip.ts";
+const PROJECT_REPOSITORY = "GrantTotinov/GPTChatDownloader";
 const devLog = (...args: unknown[]): void => {
   if (import.meta.env.DEV) {
     console.log(...args);
@@ -62,6 +63,10 @@ const optionsLink = document.getElementById(
   "options-link",
 ) as HTMLAnchorElement;
 
+const githubStarButton = document.getElementById(
+  "github-star",
+) as HTMLButtonElement;
+
 const allButtons = [
   copyButton,
   exportButton,
@@ -69,11 +74,36 @@ const allButtons = [
   exportTxtButton,
   githubToggleButton,
   githubPanelSaveButton,
+  githubStarButton,
 ];
 
 optionsLink.addEventListener("click", (event) => {
   event.preventDefault();
   chrome.runtime.openOptionsPage();
+});
+
+githubStarButton.addEventListener("click", async () => {
+  githubStarButton.disabled = true;
+  githubStarButton.textContent = "Opening GitHub...";
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "GITHUB_STAR_PROJECT",
+    });
+
+    if (response?.success) {
+      showResult(githubStarButton, "Thanks for the star! ⭐", 2500);
+
+      return;
+    }
+  } catch (error) {
+    devWarn("GPTChatDownloader: direct GitHub star failed", error);
+  }
+
+  await chrome.tabs.create({
+    url: `https://github.com/${PROJECT_REPOSITORY}`,
+  });
+  showResult(githubStarButton, "Opened GitHub", 2000);
 });
 
 /*
@@ -121,6 +151,7 @@ function resetButtons(): void {
   exportMdButton.textContent = "Export as .md";
   exportTxtButton.textContent = "Export as .txt";
   githubPanelSaveButton.textContent = "Save to exports/";
+  githubStarButton.textContent = "★ Star on GitHub";
 }
 
 function showResult(button: HTMLButtonElement, text: string, ms: number): void {

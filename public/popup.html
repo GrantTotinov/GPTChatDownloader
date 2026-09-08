@@ -212,6 +212,33 @@
         background: var(--github-hover);
       }
 
+      .support-card {
+        margin: 4px 0 10px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--canvas);
+        text-align: center;
+      }
+
+      .support-card p {
+        margin: 0 0 8px;
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      #github-star {
+        padding: 7px 10px;
+        background: var(--github);
+        color: #ffffff;
+        border-color: var(--github);
+      }
+
+      #github-star:hover:not(:disabled) {
+        background: var(--github-hover);
+      }
+
       .footer-link {
         display: block;
         text-align: center;
@@ -228,6 +255,11 @@
     </style>
   </head>
   <body>
+    <div class="support-card">
+      <p>⭐ Enjoying GPTChatDownloader?</p>
+      <button id="github-star">★ Star on GitHub</button>
+    </div>
+
     <button id="copy">Copy Conversation</button>
 
     <div class="action-row">

@@ -137,6 +137,18 @@
         font-weight: 500;
       }
 
+      .repository-link {
+        display: inline-block;
+        margin-bottom: 12px;
+        color: var(--github);
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .repository-link:hover {
+        color: var(--github-hover);
+      }
+
       #github-connect {
         background: var(--github);
         color: #ffffff;
@@ -309,6 +321,14 @@
       <p id="github-status" class="github-status">
         Save exports straight to a GitHub repo.
       </p>
+      <a
+        class="repository-link"
+        href="https://github.com/GrantTotinov/GPTChatDownloader"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        View GPTChatDownloader on GitHub
+      </a>
       <div class="row">
         <button id="github-connect">Connect GitHub</button>
         <button id="github-disconnect" hidden>Disconnect</button>
