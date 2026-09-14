@@ -22,6 +22,11 @@
         box-sizing: border-box;
       }
 
+      html,
+      body {
+        overflow: visible;
+      }
+
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         font-size: 13px;
@@ -30,6 +35,7 @@
         padding: 14px;
         margin: 0;
         background: var(--surface);
+        min-height: min-content;
       }
 
       button {
@@ -131,16 +137,13 @@
 
       #export-menu {
         display: none;
-        position: absolute;
-        top: calc(100% + 4px);
-        left: 0;
-        right: 0;
+        margin-top: 4px;
+        margin-bottom: 8px;
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
         overflow: hidden;
         box-shadow: 0 4px 12px rgba(27, 31, 36, 0.12);
-        z-index: 10;
       }
 
       #export-menu.open {
@@ -265,10 +268,6 @@
     <div class="action-row">
       <div id="export-wrapper">
         <button id="export">Export ▾</button>
-        <div id="export-menu">
-          <button id="export-md">Export as .md</button>
-          <button id="export-txt">Export as .txt</button>
-        </div>
       </div>
 
       <button id="github-toggle">
@@ -279,6 +278,11 @@
         </svg>
         GitHub
       </button>
+    </div>
+
+    <div id="export-menu">
+      <button id="export-md">Export as .md</button>
+      <button id="export-txt">Export as .txt</button>
     </div>
 
     <div id="github-panel">

@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "build:chrome": "npm run build && copy manifest.chrome.json dist\\manifest.json",
+    "build:firefox": "npm run build && copy manifest.firefox.json dist\\manifest.json"
   },
   "devDependencies": {
     "@types/chrome": "^0.2.7",
