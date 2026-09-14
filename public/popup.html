@@ -215,6 +215,75 @@
         background: var(--github-hover);
       }
 
+      /*
+       * ---------------------------------------------------
+       * GITHUB EXPORT CONFIRMATION MODAL
+       * ---------------------------------------------------
+       */
+
+      #github-confirm-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+        background: rgba(0, 0, 0, 0.35);
+      }
+
+      #github-confirm-overlay.open {
+        display: flex;
+      }
+
+      #github-confirm-modal {
+        width: 100%;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        box-shadow: 0 8px 24px rgba(27, 31, 36, 0.2);
+      }
+
+      #github-confirm-title {
+        margin: 0 0 8px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      #github-confirm-message {
+        margin: 0 0 8px;
+        color: var(--text);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      #github-confirm-private {
+        margin: 0 0 12px;
+        color: var(--text-muted);
+        font-size: 11px;
+        line-height: 1.4;
+      }
+
+      .github-confirm-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .github-confirm-actions button {
+        flex: 1;
+      }
+
+      #github-confirm-export {
+        background: var(--github);
+        color: #ffffff;
+        border-color: var(--github);
+      }
+
+      #github-confirm-export:hover:not(:disabled) {
+        background: var(--github-hover);
+      }
+
       .support-card {
         margin: 4px 0 10px;
         padding: 10px;
@@ -292,6 +361,33 @@
     </div>
 
     <a class="footer-link" id="options-link" href="#">Settings</a>
+
+    <div
+      id="github-confirm-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="github-confirm-title"
+    >
+      <div id="github-confirm-modal">
+        <p id="github-confirm-title">⚠ Warning</p>
+        <p id="github-confirm-message">
+          This action will export this chat directly to your GitHub repository.
+        </p>
+        <p id="github-confirm-private">
+          Make sure the conversation does not contain sensitive or private
+          information.
+        </p>
+
+        <p id="github-confirm-message">Are you sure you want to continue?</p>
+
+        <div class="github-confirm-actions">
+          <button id="github-confirm-cancel" type="button">Cancel</button>
+          <button id="github-confirm-export" type="button">
+            Export to GitHub
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script type="module" src="/popup.js"></script>
   </body>

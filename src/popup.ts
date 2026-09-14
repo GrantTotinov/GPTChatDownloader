@@ -67,6 +67,18 @@ const githubStarButton = document.getElementById(
   "github-star",
 ) as HTMLButtonElement;
 
+const githubConfirmOverlay = document.getElementById(
+  "github-confirm-overlay",
+) as HTMLDivElement;
+
+const githubConfirmCancelButton = document.getElementById(
+  "github-confirm-cancel",
+) as HTMLButtonElement;
+
+const githubConfirmExportButton = document.getElementById(
+  "github-confirm-export",
+) as HTMLButtonElement;
+
 const allButtons = [
   copyButton,
   exportButton,
@@ -536,13 +548,34 @@ document.addEventListener("click", (event) => {
   }
 });
 
-githubPanelSaveButton.addEventListener("click", async () => {
+function closeGithubConfirm(): void {
+  githubConfirmOverlay.classList.remove("open");
+  githubConfirmExportButton.disabled = false;
+  githubConfirmExportButton.textContent = "Export to GitHub";
+}
+
+function openGithubConfirm(): void {
+  githubConfirmOverlay.classList.add("open");
+}
+
+githubConfirmCancelButton.addEventListener("click", () => {
+  closeGithubConfirm();
+});
+
+githubConfirmOverlay.addEventListener("click", (event) => {
+  if (event.target === githubConfirmOverlay) {
+    closeGithubConfirm();
+  }
+});
+
+async function saveToGitHub(): Promise<void> {
   const fullName = githubRepoSelect.value;
 
   if (!fullName) {
     return;
   }
 
+  closeGithubConfirm();
   setBusy(githubPanelSaveButton, "Saving...");
 
   try {
@@ -580,4 +613,18 @@ githubPanelSaveButton.addEventListener("click", async () => {
   } finally {
     activeButton = null;
   }
+}
+
+githubPanelSaveButton.addEventListener("click", () => {
+  devLog("GPTChatDownloader: GitHub save confirmation requested");
+
+  if (!githubRepoSelect.value) {
+    return;
+  }
+
+  openGithubConfirm();
+});
+
+githubConfirmExportButton.addEventListener("click", () => {
+  void saveToGitHub();
 });
