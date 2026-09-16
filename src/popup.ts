@@ -406,10 +406,20 @@ async function downloadAs(
 
     objectUrl = URL.createObjectURL(blob);
 
+    const settings = await loadSettings();
+
+    /*
+     * saveAs: true opens the browser's native "Save As" dialog
+     * instead of silently dropping the file into the default
+     * Downloads folder, so the person can pick any folder each
+     * time (e.g. a Dropbox/OneDrive sync folder). This option
+     * behaves identically in Chrome and Firefox - no
+     * browser-specific branching needed.
+     */
     const downloadId = await chrome.downloads.download({
       url: objectUrl,
       filename,
-      saveAs: false,
+      saveAs: settings.askWhereToSave,
     });
 
     devLog("GPTChatDownloader: download started", downloadId);

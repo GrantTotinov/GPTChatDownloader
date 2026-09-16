@@ -18,6 +18,10 @@ const includeTimestampInput = document.getElementById(
   "includeTimestamp",
 ) as HTMLInputElement;
 
+const askWhereToSaveInput = document.getElementById(
+  "askWhereToSave",
+) as HTMLInputElement;
+
 const githubStatusLabel = document.getElementById(
   "github-status",
 ) as HTMLParagraphElement;
@@ -73,6 +77,7 @@ function applySettingsToForm(settings: Settings): void {
   setRadioValue("messageSeparator", settings.messageSeparator);
 
   includeTimestampInput.checked = settings.includeTimestamp;
+  askWhereToSaveInput.checked = settings.askWhereToSave;
 }
 
 function readSettingsFromForm(): Settings {
@@ -83,6 +88,7 @@ function readSettingsFromForm(): Settings {
       DEFAULT_SETTINGS.messageSeparator,
     ),
     includeTimestamp: includeTimestampInput.checked,
+    askWhereToSave: askWhereToSaveInput.checked,
   };
 }
 
