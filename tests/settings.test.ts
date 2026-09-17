@@ -29,6 +29,7 @@ describe("settings", () => {
       includeTimestamp: false,
       headingStyle: "h2",
       messageSeparator: "double",
+      askWhereToSave: true,
     });
   });
 
@@ -57,6 +58,7 @@ describe("settings", () => {
       includeTimestamp: true,
       headingStyle: "bold",
       messageSeparator: "rule",
+      askWhereToSave: true,
     };
 
     storageGet.mockResolvedValue(settings);
@@ -71,6 +73,7 @@ describe("settings", () => {
       includeTimestamp: true,
       headingStyle: "none",
       messageSeparator: "single",
+      askWhereToSave: true,
     };
 
     storageSet.mockResolvedValue(undefined);
