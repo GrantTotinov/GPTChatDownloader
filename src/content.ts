@@ -964,6 +964,27 @@ function loadEntireConversationSingleFlight(): Promise<Message[]> {
 
 const EXPORT_SUCCESS_OVERLAY_ID = "gptchatdownloader-export-success-overlay";
 
+type ExportTheme = "system" | "light" | "dark";
+
+let exportTheme: ExportTheme = "system";
+
+void chrome.storage.sync.get({ theme: "system" }).then((result) => {
+  if (result.theme === "light" || result.theme === "dark") {
+    exportTheme = result.theme;
+  }
+});
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "sync" || !changes.theme) {
+    return;
+  }
+
+  exportTheme =
+    changes.theme.newValue === "light" || changes.theme.newValue === "dark"
+      ? changes.theme.newValue
+      : "system";
+});
+
 const PROJECT_REPOSITORY_URL =
   "https://github.com/GrantTotinov/GPTChatDownloader";
 const COFFEE_URL = "https://buymeacoffee.com/granttotinov";
@@ -987,7 +1008,32 @@ function showExportSuccessOverlay(): void {
 
   const overlay = document.createElement("div");
   overlay.id = EXPORT_SUCCESS_OVERLAY_ID;
+  overlay.dataset.theme = exportTheme;
   overlay.setAttribute("role", "dialog");
+
+  const themeStyle = document.createElement("style");
+  themeStyle.textContent = `
+    #${EXPORT_SUCCESS_OVERLAY_ID} {
+      --gpt-export-overlay: rgba(0, 0, 0, 0.4);
+      --gpt-export-surface: #ffffff;
+      --gpt-export-text: #1b1f24;
+    }
+
+    #${EXPORT_SUCCESS_OVERLAY_ID}[data-theme="dark"] {
+      --gpt-export-overlay: rgba(0, 0, 0, 0.6);
+      --gpt-export-surface: #0d1117;
+      --gpt-export-text: #f0f6fc;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      #${EXPORT_SUCCESS_OVERLAY_ID}[data-theme="system"] {
+        --gpt-export-overlay: rgba(0, 0, 0, 0.6);
+        --gpt-export-surface: #0d1117;
+        --gpt-export-text: #f0f6fc;
+      }
+    }
+  `;
+  document.head.appendChild(themeStyle);
   overlay.setAttribute("aria-modal", "true");
   overlay.style.cssText = `
     position: fixed;
@@ -997,7 +1043,7 @@ function showExportSuccessOverlay(): void {
     align-items: center;
     justify-content: center;
     padding: 16px;
-    background: rgba(0, 0, 0, 0.55);
+    background: var(--gpt-export-overlay);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   `;
 
@@ -1009,8 +1055,8 @@ function showExportSuccessOverlay(): void {
     overflow-y: auto;
     padding: 24px 22px;
     border-radius: 14px;
-    background: #1b1f24;
-    color: #ffffff;
+    background: var(--gpt-export-surface);
+    color: var(--gpt-export-text);
     text-align: center;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   `;
@@ -1019,7 +1065,7 @@ function showExportSuccessOverlay(): void {
     <p style="margin: 0 0 6px; font-size: 19px; font-weight: 700; color: #3fb950;">
       ✅ Export Successful!
     </p>
-    <p style="margin: 0 0 20px; font-size: 13px; color: #d0d7de; line-height: 1.5;">
+    <p style="margin: 0 0 20px; font-size: 13px; color: var(--gpt-export-text); line-height: 1.5;">
       Built with ❤️. Thanks for using GPTChatDownloader.
     </p>
 
@@ -1065,7 +1111,7 @@ function showExportSuccessOverlay(): void {
     <button
       type="button"
       id="gptchatdownloader-export-success-close"
-      style="width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid #30363d; background: transparent; color: #d0d7de; font-size: 12.5px; font-weight: 500; cursor: pointer;"
+      style="width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid #30363d; background: transparent; color: var(--gpt-export-text); font-size: 12.5px; font-weight: 500; cursor: pointer;"
     >
       Close
     </button>

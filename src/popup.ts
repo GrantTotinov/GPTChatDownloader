@@ -1,5 +1,17 @@
 import { SEPARATOR_TEXT, loadSettings } from "./settings.ts";
 
+async function applyStoredTheme(): Promise<void> {
+  const settings = await loadSettings();
+
+  if (settings.theme === "system") {
+    delete document.documentElement.dataset.theme;
+  } else {
+    document.documentElement.dataset.theme = settings.theme;
+  }
+}
+
+void applyStoredTheme();
+
 import { stripMarkdown } from "./markdown-strip.ts";
 
 const PROJECT_REPOSITORY = "GrantTotinov/GPTChatDownloader";

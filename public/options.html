@@ -6,6 +6,8 @@
     <title>GPTChatDownloader Settings</title>
     <style>
       :root {
+        color-scheme: light;
+
         --canvas: #ffffff;
         --surface: #f6f8fa;
         --border: #d0d7de;
@@ -15,8 +17,50 @@
         --accent-hover: #0d8e6d;
         --github: #24292e;
         --github-hover: #1b1f23;
+        --github-text: #ffffff;
         --danger: #cf222e;
         --danger-surface: #fff1f0;
+        --overlay: rgba(0, 0, 0, 0.4);
+      }
+
+      :root[data-theme="light"] {
+        color-scheme: light;
+      }
+
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --canvas: #161b22;
+        --surface: #0d1117;
+        --border: #30363d;
+        --text: #f0f6fc;
+        --text-muted: #8b949e;
+        --accent: #10a37f;
+        --accent-hover: #12b886;
+        --github: #21262d;
+        --github-hover: #30363d;
+        --github-text: #f0f6fc;
+        --danger: #f85149;
+        --danger-surface: #2d1114;
+        --overlay: rgba(0, 0, 0, 0.6);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+          color-scheme: dark;
+          --canvas: #161b22;
+          --surface: #0d1117;
+          --border: #30363d;
+          --text: #f0f6fc;
+          --text-muted: #8b949e;
+          --accent: #10a37f;
+          --accent-hover: #12b886;
+          --github: #21262d;
+          --github-hover: #30363d;
+          --github-text: #f0f6fc;
+          --danger: #f85149;
+          --danger-surface: #2d1114;
+          --overlay: rgba(0, 0, 0, 0.6);
+        }
       }
 
       * {
@@ -96,7 +140,7 @@
 
       #save {
         background: var(--accent);
-        color: #ffffff;
+        color: var(--github-text);
       }
 
       #save:hover {
@@ -113,6 +157,12 @@
 
       #status.visible {
         opacity: 1;
+      }
+
+      .hint {
+        margin: 4px 0 0;
+        color: var(--text-muted);
+        font-size: 12px;
       }
 
       .row {
@@ -151,7 +201,7 @@
 
       #github-connect {
         background: var(--github);
-        color: #ffffff;
+        color: var(--github-text);
       }
 
       #github-connect:hover:not(:disabled) {
@@ -191,7 +241,7 @@
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(27, 31, 36, 0.6);
+        background: var(--overlay);
         backdrop-filter: blur(2px);
         align-items: center;
         justify-content: center;
@@ -325,6 +375,18 @@
         <input type="radio" name="messageSeparator" value="rule" />
         Horizontal rule (<code>---</code>)
       </label>
+    </fieldset>
+    <fieldset>
+      <legend>Appearance</legend>
+      <label for="theme">
+        <span>Theme</span>
+        <select id="theme">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
+      <p class="hint">System follows your browser/operating system theme.</p>
     </fieldset>
 
     <fieldset>

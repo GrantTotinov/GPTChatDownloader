@@ -22,6 +22,16 @@ const askWhereToSaveInput = document.getElementById(
   "askWhereToSave",
 ) as HTMLInputElement;
 
+const themeInput = document.getElementById("theme") as HTMLSelectElement;
+
+function applyTheme(theme: Settings["theme"]): void {
+  if (theme === "system") {
+    delete document.documentElement.dataset.theme;
+  } else {
+    document.documentElement.dataset.theme = theme;
+  }
+}
+
 const downloadsSettingsLink = document.getElementById(
   "downloads-settings-link",
 ) as HTMLAnchorElement;
@@ -82,6 +92,9 @@ function applySettingsToForm(settings: Settings): void {
 
   includeTimestampInput.checked = settings.includeTimestamp;
   askWhereToSaveInput.checked = settings.askWhereToSave;
+
+  themeInput.value = settings.theme;
+  applyTheme(settings.theme);
 }
 
 function readSettingsFromForm(): Settings {
@@ -93,6 +106,7 @@ function readSettingsFromForm(): Settings {
     ),
     includeTimestamp: includeTimestampInput.checked,
     askWhereToSave: askWhereToSaveInput.checked,
+    theme: themeInput.value as Settings["theme"],
   };
 }
 
@@ -101,6 +115,10 @@ async function init(): Promise<void> {
 
   applySettingsToForm(settings);
 }
+
+themeInput.addEventListener("change", () => {
+  applyTheme(themeInput.value as Settings["theme"]);
+});
 
 saveButton.addEventListener("click", async () => {
   const settings = readSettingsFromForm();

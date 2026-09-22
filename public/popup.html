@@ -6,6 +6,8 @@
     <title>GPTChatDownloader</title>
     <style>
       :root {
+        color-scheme: light;
+
         --surface: #ffffff;
         --canvas: #f6f8fa;
         --border: #d0d7de;
@@ -15,7 +17,48 @@
         --accent-hover: #0d8e6d;
         --github: #24292e;
         --github-hover: #1b1f23;
+        --github-text: #ffffff;
         --radius: 6px;
+        --overlay: rgba(0, 0, 0, 0.4);
+        --loading-overlay: rgba(255, 255, 255, 0.85);
+      }
+
+      :root[data-theme="light"] {
+        color-scheme: light;
+      }
+
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --surface: #0d1117;
+        --canvas: #161b22;
+        --border: #30363d;
+        --text: #f0f6fc;
+        --text-muted: #8b949e;
+        --accent: #10a37f;
+        --accent-hover: #12b886;
+        --github: #21262d;
+        --github-hover: #30363d;
+        --github-text: #f0f6fc;
+        --overlay: rgba(0, 0, 0, 0.6);
+        --loading-overlay: rgba(13, 17, 23, 0.9);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+          color-scheme: dark;
+          --surface: #0d1117;
+          --canvas: #161b22;
+          --border: #30363d;
+          --text: #f0f6fc;
+          --text-muted: #8b949e;
+          --accent: #10a37f;
+          --accent-hover: #12b886;
+          --github: #21262d;
+          --github-hover: #30363d;
+          --github-text: #f0f6fc;
+          --overlay: rgba(0, 0, 0, 0.6);
+          --loading-overlay: rgba(13, 17, 23, 0.9);
+        }
       }
 
       * {
@@ -75,7 +118,7 @@
 
       #copy {
         background: var(--accent);
-        color: #ffffff;
+        color: var(--github-text);
         border-color: var(--accent);
         margin-bottom: 8px;
       }
@@ -107,7 +150,7 @@
       #github-star {
         padding: 7px 10px;
         background: var(--github);
-        color: #ffffff;
+        color: var(--github-text);
         border-color: var(--github);
       }
 
@@ -146,7 +189,7 @@
         z-index: 2000;
         align-items: center;
         justify-content: center;
-        background: rgba(255, 255, 255, 0.85);
+        background: var(--loading-overlay);
         backdrop-filter: blur(1px);
       }
 
@@ -201,7 +244,7 @@
         padding: 9px 14px;
         border-radius: var(--radius);
         background: var(--github);
-        color: #ffffff;
+        color: var(--github-text);
         font-size: 12.5px;
         font-weight: 500;
         text-align: center;
@@ -233,7 +276,7 @@
         align-items: center;
         justify-content: center;
         padding: 14px;
-        background: rgba(0, 0, 0, 0.4);
+        background: var(--overlay);
       }
 
       #selector-overlay.open {
@@ -385,7 +428,7 @@
       #selector-export {
         flex: 1;
         background: var(--accent);
-        color: #ffffff;
+        color: var(--github-text);
         border-color: var(--accent);
       }
 
@@ -396,7 +439,7 @@
       #selector-github-button {
         flex: 1;
         background: var(--github);
-        color: #ffffff;
+        color: var(--github-text);
         border-color: var(--github);
       }
 
@@ -424,7 +467,7 @@
         align-items: center;
         justify-content: center;
         padding: 14px;
-        background: rgba(0, 0, 0, 0.4);
+        background: var(--overlay);
       }
 
       #github-panel.open {
@@ -467,7 +510,7 @@
 
       #github-panel-save {
         background: var(--github);
-        color: #ffffff;
+        color: var(--github-text);
         border-color: var(--github);
         margin-bottom: 6px;
       }
@@ -495,7 +538,7 @@
         align-items: center;
         justify-content: center;
         padding: 14px;
-        background: rgba(0, 0, 0, 0.4);
+        background: var(--overlay);
       }
 
       #github-confirm-overlay.open {
@@ -542,7 +585,7 @@
 
       #github-confirm-export {
         background: var(--github);
-        color: #ffffff;
+        color: var(--github-text);
         border-color: var(--github);
       }
 

@@ -25,6 +25,7 @@ export interface Settings {
    * browsers implement the same way.
    */
   askWhereToSave: boolean;
+  theme: "system" | "light" | "dark";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -32,6 +33,7 @@ export const DEFAULT_SETTINGS: Settings = {
   headingStyle: "h2",
   messageSeparator: "double",
   askWhereToSave: true,
+  theme: "system",
 };
 
 export const SEPARATOR_TEXT: Record<Settings["messageSeparator"], string> = {
