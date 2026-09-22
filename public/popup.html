@@ -549,92 +549,6 @@
       #github-confirm-export:hover:not(:disabled) {
         background: var(--github-hover);
       }
-
-      /*
-       * ---------------------------------------------------
-       * EXPORT SUCCESS MODAL
-       * ---------------------------------------------------
-       *
-       * Large, unmissable call-to-action buttons - this is
-       * the retention/support touch point, so Rate and
-       * Feedback need to actually be seen and clicked, not
-       * tucked away as small text.
-       */
-
-      #export-success-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        z-index: 1300;
-        align-items: center;
-        justify-content: center;
-        padding: 14px;
-        background: rgba(0, 0, 0, 0.45);
-      }
-
-      #export-success-overlay.open {
-        display: flex;
-      }
-
-      #export-success-modal {
-        width: 100%;
-        padding: 20px 18px;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        background: var(--surface);
-        box-shadow: 0 12px 32px rgba(27, 31, 36, 0.3);
-        text-align: center;
-      }
-
-      #export-success-title {
-        margin: 0 0 8px;
-        font-size: 17px;
-        font-weight: 700;
-        color: var(--accent);
-      }
-
-      #export-success-message {
-        margin: 0 0 16px;
-        font-size: 12.5px;
-        color: var(--text);
-      }
-
-      #export-success-rate {
-        display: block;
-        padding: 11px 10px;
-        margin-bottom: 8px;
-        border-radius: var(--radius);
-        background: var(--accent);
-        color: #ffffff;
-        text-decoration: none;
-        font-size: 13.5px;
-        font-weight: 700;
-      }
-
-      #export-success-rate:hover {
-        background: var(--accent-hover);
-      }
-
-      #export-success-feedback {
-        display: block;
-        padding: 10px;
-        margin-bottom: 12px;
-        border-radius: var(--radius);
-        background: var(--github);
-        color: #ffffff;
-        text-decoration: none;
-        font-size: 13px;
-        font-weight: 600;
-      }
-
-      #export-success-feedback:hover {
-        background: var(--github-hover);
-      }
-
-      #export-success-close {
-        font-size: 12px;
-        padding: 7px 10px;
-      }
     </style>
   </head>
   <body>
@@ -752,41 +666,6 @@
             Export to GitHub
           </button>
         </div>
-      </div>
-    </div>
-
-    <!-- Export success modal -->
-    <div
-      id="export-success-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="export-success-title"
-    >
-      <div id="export-success-modal">
-        <p id="export-success-title">✅ Export Successful!</p>
-        <p id="export-success-message">
-          Your conversation has been exported successfully.
-        </p>
-
-        <a
-          id="export-success-rate"
-          href="https://chromewebstore.google.com/detail/REPLACE_WITH_YOUR_EXTENSION_ID"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          ⭐ Rate on Chrome Web Store
-        </a>
-
-        <a
-          id="export-success-feedback"
-          href="https://github.com/GrantTotinov/GPTChatDownloader/issues"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          💬 Send Feedback / Report a Bug
-        </a>
-
-        <button id="export-success-close" type="button">Close</button>
       </div>
     </div>
 

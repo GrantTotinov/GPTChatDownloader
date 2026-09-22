@@ -944,6 +944,167 @@ function loadEntireConversationSingleFlight(): Promise<Message[]> {
 
 /*
  * ---------------------------------------------------------
+ * EXPORT SUCCESS OVERLAY
+ * ---------------------------------------------------------
+ *
+ * Injected directly into the ChatGPT page (not the popup),
+ * so it stays visible even after the person closes the
+ * extension popup - which Chrome does automatically the
+ * moment focus moves anywhere outside the popup, including
+ * onto the page itself. popup.ts sends a SHOW_EXPORT_SUCCESS
+ * message here once a download or GitHub save actually
+ * completes; this function builds and shows the overlay.
+ *
+ * Self-contained: styles are inlined on the injected elements
+ * rather than relying on a separate stylesheet, since content
+ * scripts don't get a free way to load one without a matching
+ * manifest entry, and this way there's no risk of colliding
+ * with ChatGPT's own page styles.
+ */
+
+const EXPORT_SUCCESS_OVERLAY_ID = "gptchatdownloader-export-success-overlay";
+
+const PROJECT_REPOSITORY_URL =
+  "https://github.com/GrantTotinov/GPTChatDownloader";
+const COFFEE_URL = "https://buymeacoffee.com/granttotinov";
+const CHROME_STORE_URL =
+  "https://chromewebstore.google.com/detail/objkcakdcilfaphifjfcgfamlnnbinjc";
+const FEEDBACK_URL = `${PROJECT_REPOSITORY_URL}/issues`;
+
+function removeExportSuccessOverlay(): void {
+  const existing = document.getElementById(EXPORT_SUCCESS_OVERLAY_ID);
+
+  existing?.remove();
+}
+
+function showExportSuccessOverlay(): void {
+  /*
+   * Only one at a time - if a previous overlay is somehow
+   * still around (e.g. rapid repeated exports), replace it
+   * rather than stacking.
+   */
+  removeExportSuccessOverlay();
+
+  const overlay = document.createElement("div");
+  overlay.id = EXPORT_SUCCESS_OVERLAY_ID;
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.55);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  `;
+
+  const modal = document.createElement("div");
+  modal.style.cssText = `
+    width: 100%;
+    max-width: 380px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    padding: 24px 22px;
+    border-radius: 14px;
+    background: #1b1f24;
+    color: #ffffff;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  `;
+
+  modal.innerHTML = `
+    <p style="margin: 0 0 6px; font-size: 19px; font-weight: 700; color: #3fb950;">
+      ✅ Export Successful!
+    </p>
+    <p style="margin: 0 0 20px; font-size: 13px; color: #d0d7de; line-height: 1.5;">
+      Built with ❤️. Thanks for using GPTChatDownloader.
+    </p>
+
+    <a
+      href="${CHROME_STORE_URL}"
+      target="_blank"
+      rel="noopener noreferrer"
+      style="display: block; padding: 11px 10px; margin-bottom: 8px; border-radius: 8px; background: #10a37f; color: #ffffff; text-decoration: none; font-size: 13.5px; font-weight: 700;"
+    >
+      ⭐ Rate on Chrome Web Store
+    </a>
+
+    <a
+      href="${COFFEE_URL}"
+      target="_blank"
+      rel="noopener noreferrer"
+      style="display: block; padding: 11px 10px; margin-bottom: 14px; border-radius: 8px; background: #ffdd00; color: #1b1f24; text-decoration: none; font-size: 13.5px; font-weight: 700;"
+    >
+      ☕ Buy Me a Coffee
+    </a>
+
+    <p style="margin: 0 0 10px; font-size: 12px; color: #8b949e;">
+      Found a bug or have an idea? Reach out:
+    </p>
+
+    <div style="display: flex; justify-content: center; gap: 14px; margin-bottom: 16px;">
+      <a
+        href="https://x.com/intent/tweet?text=${encodeURIComponent("Checking out GPTChatDownloader - a handy ChatGPT export extension!")}&url=${encodeURIComponent(PROJECT_REPOSITORY_URL)}"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Share on X"
+        style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #2d333b; color: #ffffff; text-decoration: none;"
+      >✕</a>
+      <a
+        href="${FEEDBACK_URL}"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Send feedback"
+        style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #2d333b; color: #ffffff; text-decoration: none; font-size: 15px;"
+      >✉</a>
+    </div>
+
+    <button
+      type="button"
+      id="gptchatdownloader-export-success-close"
+      style="width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid #30363d; background: transparent; color: #d0d7de; font-size: 12.5px; font-weight: 500; cursor: pointer;"
+    >
+      Close
+    </button>
+  `;
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  const closeButton = modal.querySelector<HTMLButtonElement>(
+    "#gptchatdownloader-export-success-close",
+  );
+
+  closeButton?.addEventListener("click", () => {
+    removeExportSuccessOverlay();
+  });
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      removeExportSuccessOverlay();
+    }
+  });
+
+  /*
+   * Close on Escape too, matching standard modal behavior.
+   * Auto-removes itself once the overlay is gone so repeated
+   * exports don't stack up listeners.
+   */
+  const handleEscape = (event: KeyboardEvent): void => {
+    if (event.key === "Escape") {
+      removeExportSuccessOverlay();
+      document.removeEventListener("keydown", handleEscape);
+    }
+  };
+
+  document.addEventListener("keydown", handleEscape);
+}
+
+/*
+ * ---------------------------------------------------------
  * CHROME MESSAGE HANDLER
  * ---------------------------------------------------------
  */
@@ -987,3 +1148,23 @@ chrome.runtime.onMessage.addListener(
     return true;
   },
 );
+
+/*
+ * SHOW_EXPORT_SUCCESS is sent by popup.ts once a download or
+ * GitHub save has actually completed (see background.ts's
+ * chrome.downloads.onChanged tracking for downloads, and the
+ * GitHub save response handler for repo saves). Shown here in
+ * the page itself, not the popup, so it stays visible even if
+ * the popup has already closed by the time the download
+ * finishes - which Chrome does automatically as soon as focus
+ * leaves the popup, including a native Save As dialog opening.
+ */
+chrome.runtime.onMessage.addListener((message: { type: string }) => {
+  if (message.type !== "SHOW_EXPORT_SUCCESS") {
+    return false;
+  }
+
+  showExportSuccessOverlay();
+
+  return false;
+});

@@ -125,17 +125,6 @@ const githubConfirmExportButton = document.getElementById(
   "github-confirm-export",
 ) as HTMLButtonElement;
 
-/* Export success modal */
-const exportSuccessOverlay = document.getElementById(
-  "export-success-overlay",
-) as HTMLDivElement;
-const exportSuccessCloseButton = document.getElementById(
-  "export-success-close",
-) as HTMLButtonElement;
-const exportSuccessRateLink = document.getElementById(
-  "export-success-rate",
-) as HTMLAnchorElement;
-
 const allButtons = [
   copyButton,
   exportButton,
@@ -970,39 +959,43 @@ githubConfirmExportButton.addEventListener("click", () => {
 
 /*
  * ---------------------------------------------------------
- * EXPORT SUCCESS MODAL
+ * EXPORT SUCCESS OVERLAY (shown on the ChatGPT page)
  * ---------------------------------------------------------
  *
- * Shown after every successful file download or GitHub save.
- * Retention/support touch point: rate on the store or send
- * feedback. Its call-to-action buttons are large, on-screen
- * elements in this modal (not tucked into a checkbox or
- * inline label), since they're meant to actually be noticed
- * and clicked.
+ * The success overlay is NOT rendered in the popup anymore -
+ * Chrome closes the popup automatically the moment focus
+ * moves anywhere outside it, which happens routinely right
+ * when a download finishes (e.g. a native Save As dialog
+ * stealing focus, or the person just clicking back onto the
+ * page). Instead, this sends a message to content.ts running
+ * on the active ChatGPT tab, which injects and shows the
+ * overlay directly on the page, where it survives the popup
+ * closing.
  */
 function openExportSuccess(): void {
-  exportSuccessOverlay.classList.add("open");
-  markOverlayOpened();
+  void (async () => {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    if (!tab.id) {
+      return;
+    }
+
+    chrome.tabs
+      .sendMessage(tab.id, { type: "SHOW_EXPORT_SUCCESS" })
+      .catch(() => {
+        /*
+         * Content script may not be running in this tab (e.g.
+         * the person navigated away from chatgpt.com after
+         * starting the export) - nothing to show it on, so
+         * just drop it silently. The file was still saved
+         * successfully either way.
+         */
+      });
+  })();
 }
-
-function closeExportSuccess(): void {
-  exportSuccessOverlay.classList.remove("open");
-  markOverlayClosed();
-}
-
-exportSuccessCloseButton.addEventListener("click", () => {
-  closeExportSuccess();
-});
-
-exportSuccessOverlay.addEventListener("click", (event) => {
-  if (event.target === exportSuccessOverlay) {
-    closeExportSuccess();
-  }
-});
-
-exportSuccessRateLink.addEventListener("click", () => {
-  closeExportSuccess();
-});
 
 /*
  * Fired by background.ts's chrome.downloads.onChanged listener
