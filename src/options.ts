@@ -22,6 +22,10 @@ const askWhereToSaveInput = document.getElementById(
   "askWhereToSave",
 ) as HTMLInputElement;
 
+const downloadsSettingsLink = document.getElementById(
+  "downloads-settings-link",
+) as HTMLAnchorElement;
+
 const githubStatusLabel = document.getElementById(
   "github-status",
 ) as HTMLParagraphElement;
@@ -108,6 +112,36 @@ saveButton.addEventListener("click", async () => {
   setTimeout(() => {
     statusLabel.classList.remove("visible");
   }, 1500);
+});
+
+/*
+ * ---------------------------------------------------------
+ * DOWNLOADS SETTINGS SHORTCUT
+ * ---------------------------------------------------------
+ *
+ * Opens the browser's own download-location settings page in
+ * a new tab. This is a plain navigation shortcut, not a new
+ * capability - extensions cannot read or change this setting
+ * programmatically (see askWhereToSave in settings.ts for
+ * why), so this just saves the person a trip through the
+ * browser's own settings menu to find it themselves. Lives
+ * here in the options page rather than the popup, since it's
+ * a one-time/occasional setup step, not something reached for
+ * on every export.
+ * chrome://settings/downloads works in Chrome; Firefox uses
+ * about:preferences#general (its downloads section lives on
+ * the General pane, there is no dedicated downloads:// URL).
+ */
+downloadsSettingsLink.addEventListener("click", (event) => {
+  event.preventDefault();
+
+  const isFirefox = navigator.userAgent.includes("Firefox");
+
+  const url = isFirefox
+    ? "about:preferences#general"
+    : "chrome://settings/downloads";
+
+  chrome.tabs.create({ url });
 });
 
 /*

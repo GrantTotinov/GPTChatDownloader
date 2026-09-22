@@ -33,6 +33,94 @@ function isOwnExtensionSender(sender: chrome.runtime.MessageSender): boolean {
 }
 
 /*
+ * ---------------------------------------------------------
+ * DOWNLOAD COMPLETION TRACKING
+ * ---------------------------------------------------------
+ *
+ * chrome.downloads.download()'s returned Promise resolves as
+ * soon as the download is QUEUED - with saveAs: true, that's
+ * the moment the native "Save As" dialog opens, not the
+ * moment the person actually picks a folder and the file is
+ * written. Showing a success message right after that
+ * Promise resolves is misleading: it fires before the person
+ * has even chosen where to save, or even if they cancel the
+ * dialog entirely.
+ *
+ * chrome.downloads.onChanged is the correct signal - it fires
+ * when a download's state actually changes to "complete" (or
+ * "interrupted", e.g. the person cancelled the Save As
+ * dialog). This listener lives in the service worker rather
+ * than popup.ts because many Chrome versions close/suspend
+ * the popup the moment a native OS dialog (like Save As)
+ * steals focus, so a popup-local listener could simply never
+ * fire. The service worker has no such lifecycle issue.
+ *
+ * Download IDs we're tracking (from downloadAs() in popup.ts)
+ * are registered via DOWNLOAD_TRACK; when that download's
+ * state changes, this broadcasts DOWNLOAD_COMPLETE /
+ * DOWNLOAD_CANCELLED to any open popup, which is what
+ * actually triggers the success overlay.
+ */
+const trackedDownloadIds = new Set<number>();
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type !== "DOWNLOAD_TRACK") {
+    return false;
+  }
+
+  if (!isOwnExtensionSender(sender)) {
+    return false;
+  }
+
+  if (typeof message.downloadId === "number") {
+    trackedDownloadIds.add(message.downloadId);
+  }
+
+  sendResponse({ success: true });
+
+  return false;
+});
+
+chrome.downloads.onChanged.addListener((delta) => {
+  if (!trackedDownloadIds.has(delta.id)) {
+    return;
+  }
+
+  if (delta.state?.current === "complete") {
+    trackedDownloadIds.delete(delta.id);
+
+    chrome.runtime
+      .sendMessage({ type: "DOWNLOAD_COMPLETE", downloadId: delta.id })
+      .catch(() => {
+        /*
+         * No popup currently open to receive this - fine,
+         * there's nothing further to do. The file was still
+         * saved successfully; we just can't show the success
+         * overlay for a popup that isn't there anymore.
+         */
+      });
+
+    return;
+  }
+
+  /*
+   * "interrupted" covers both explicit cancellation (the
+   * person closed the Save As dialog without picking a
+   * location) and genuine failures. Either way, no success
+   * overlay should appear.
+   */
+  if (delta.state?.current === "interrupted") {
+    trackedDownloadIds.delete(delta.id);
+
+    chrome.runtime
+      .sendMessage({ type: "DOWNLOAD_CANCELLED", downloadId: delta.id })
+      .catch(() => {
+        /* No popup open - nothing to do. */
+      });
+  }
+});
+
+/*
  * GitHub "owner/repo" full_name as returned by the GitHub
  * API: two path segments, each restricted to the characters
  * GitHub allows in user/org and repo names.

@@ -22,26 +22,26 @@
         box-sizing: border-box;
       }
 
-      html,
-      body {
-        overflow: visible;
+      body.overlay-open {
+        height: 600px;
       }
 
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         font-size: 13px;
         color: var(--text);
-        width: 240px;
+        width: 340px;
         padding: 14px;
         margin: 0;
         background: var(--surface);
         min-height: min-content;
+        position: relative;
       }
 
       button {
         display: block;
         width: 100%;
-        padding: 9px 10px;
+        padding: 10px 10px;
         border: 1px solid var(--border);
         border-radius: var(--radius);
         background: var(--surface);
@@ -69,7 +69,7 @@
 
       /*
        * ---------------------------------------------------
-       * PRIMARY ROW: Copy Conversation
+       * MAIN POPUP BODY - just Copy + Export
        * ---------------------------------------------------
        */
 
@@ -84,81 +84,330 @@
         background: var(--accent-hover);
       }
 
+      #export {
+        margin-bottom: 8px;
+      }
+
+      .support-card {
+        margin: 4px 0 10px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--canvas);
+        text-align: center;
+      }
+
+      .support-card p {
+        margin: 0 0 8px;
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      #github-star {
+        padding: 7px 10px;
+        background: var(--github);
+        color: #ffffff;
+        border-color: var(--github);
+      }
+
+      #github-star:hover:not(:disabled) {
+        background: var(--github-hover);
+      }
+
+      .footer-link {
+        display: block;
+        text-align: center;
+        margin-top: 4px;
+        font-size: 11px;
+        color: var(--text-muted);
+        text-decoration: none;
+      }
+
+      .footer-link:hover {
+        color: var(--text);
+        text-decoration: underline;
+      }
+
       /*
        * ---------------------------------------------------
-       * SECOND ROW: Export ▾ and GitHub, as peer actions
+       * LOADING OVERLAY
        * ---------------------------------------------------
        *
-       * Previously "Save to GitHub" lived as a third,
-       * hidden item inside the Export dropdown. Promoted
-       * here to a visible primary action alongside Export,
-       * since saving straight to a repo is a first-class
-       * export destination, not an export FORMAT (the
-       * dropdown is specifically for file formats: .md/.txt).
+       * Grays out and covers the entire popup while messages
+       * are being fetched, so the person can't click anything
+       * else mid-load and can see something is happening.
        */
 
-      .action-row {
+      #loading-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(1px);
+      }
+
+      #loading-overlay.open {
         display: flex;
+      }
+
+      #loading-overlay-content {
+        text-align: center;
+      }
+
+      #loading-overlay-spinner {
+        width: 28px;
+        height: 28px;
+        margin: 0 auto 14px auto;
+        border: 3px solid var(--border);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      #loading-overlay-message {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text);
+      }
+
+      /*
+       * ---------------------------------------------------
+       * TOAST
+       * ---------------------------------------------------
+       *
+       * On-screen feedback for quick actions (Copied!,
+       * Download started, errors) - replaces swapping a
+       * button's own text, which is easy to miss and
+       * conflicts with disabling buttons during busy state.
+       */
+
+      #toast {
+        position: fixed;
+        left: 50%;
+        bottom: 14px;
+        transform: translateX(-50%) translateY(8px);
+        max-width: calc(100% - 28px);
+        padding: 9px 14px;
+        border-radius: var(--radius);
+        background: var(--github);
+        color: #ffffff;
+        font-size: 12.5px;
+        font-weight: 500;
+        text-align: center;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 0.15s ease,
+          transform 0.15s ease;
+        z-index: 3000;
+        box-shadow: 0 8px 20px rgba(27, 31, 36, 0.3);
+      }
+
+      #toast.visible {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      /*
+       * ---------------------------------------------------
+       * MESSAGE SELECTOR / EXPORT PANEL
+       * ---------------------------------------------------
+       */
+
+      #selector-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+        background: rgba(0, 0, 0, 0.4);
+      }
+
+      #selector-overlay.open {
+        display: flex;
+      }
+
+      #selector-modal {
+        width: 100%;
+        max-height: 572px;
+        display: flex;
+        flex-direction: column;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        box-shadow: 0 8px 24px rgba(27, 31, 36, 0.25);
+        overflow-y: auto;
+      }
+
+      #selector-title {
+        margin: 0 0 4px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      #selector-panel-message {
+        margin: 0 0 10px;
+        font-size: 12px;
+        color: var(--text-muted);
+        line-height: 1.4;
+      }
+
+      .selector-filter-row {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 8px;
+      }
+
+      .selector-filter-row button {
+        flex: 1;
+        padding: 6px 4px;
+        font-size: 11px;
+      }
+
+      .selector-expand-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        font-size: 12px;
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      #selector-list {
+        flex: 1;
+        min-height: 140px;
+        max-height: 280px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--canvas);
+        margin-bottom: 8px;
+      }
+
+      .selector-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        padding: 7px 8px;
+        font-size: 12px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .selector-row:last-child {
+        border-bottom: none;
+      }
+
+      .selector-row:hover {
+        background: var(--surface);
+      }
+
+      .selector-row input[type="checkbox"] {
+        margin-top: 2px;
+        flex-shrink: 0;
+      }
+
+      .selector-role-icon {
+        flex-shrink: 0;
+      }
+
+      .selector-preview {
+        color: var(--text);
+        line-height: 1.4;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /*
+       * When expanded, previews wrap their full text and the
+       * list becomes a normal scrollable, readable column
+       * instead of truncated one-liners.
+       */
+      #selector-list.expanded .selector-preview {
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow: visible;
+        text-overflow: unset;
+      }
+
+      .selector-footer-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         gap: 8px;
         margin-bottom: 8px;
       }
 
-      .action-row #export-wrapper {
-        flex: 3;
+      #selector-count {
+        font-size: 11px;
+        color: var(--text-muted);
+        white-space: nowrap;
       }
 
-      .action-row #github-toggle {
-        flex: 2;
+      .selector-action-row {
+        display: flex;
+        gap: 8px;
       }
 
-      #export-wrapper {
-        position: relative;
+      #selector-format-select {
+        flex: 1;
+        font-family: inherit;
+        font-size: 13px;
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
       }
 
-      #github-toggle {
+      .selector-action-row button {
+        width: auto;
+        white-space: nowrap;
+      }
+
+      #selector-export {
+        flex: 1;
+        background: var(--accent);
+        color: #ffffff;
+        border-color: var(--accent);
+      }
+
+      #selector-export:hover:not(:disabled) {
+        background: var(--accent-hover);
+      }
+
+      #selector-github-button {
+        flex: 1;
         background: var(--github);
         color: #ffffff;
         border-color: var(--github);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
       }
 
-      #github-toggle:hover:not(:disabled) {
+      #selector-github-button:hover:not(:disabled) {
         background: var(--github-hover);
       }
 
-      #github-toggle svg {
-        width: 14px;
-        height: 14px;
-        flex-shrink: 0;
-      }
-
-      #export-menu {
-        display: none;
-        margin-top: 4px;
-        margin-bottom: 8px;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        overflow: hidden;
-        box-shadow: 0 4px 12px rgba(27, 31, 36, 0.12);
-      }
-
-      #export-menu.open {
-        display: block;
-      }
-
-      #export-menu button {
-        border: none;
-        border-radius: 0;
-        text-align: left;
-        margin-bottom: 0;
-      }
-
-      #export-menu button:not(:last-child) {
-        border-bottom: 1px solid var(--canvas);
+      #selector-cancel {
+        margin-top: 8px;
+        font-size: 12px;
+        padding: 7px 10px;
       }
 
       /*
@@ -169,21 +418,32 @@
 
       #github-panel {
         display: none;
-        margin-bottom: 8px;
-        padding: 10px;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        background: var(--canvas);
+        position: fixed;
+        inset: 0;
+        z-index: 1100;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+        background: rgba(0, 0, 0, 0.4);
       }
 
       #github-panel.open {
-        display: block;
+        display: flex;
+      }
+
+      #github-panel-modal {
+        width: 100%;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        box-shadow: 0 8px 24px rgba(27, 31, 36, 0.25);
       }
 
       #github-panel-message {
         font-size: 12px;
         color: var(--text-muted);
-        margin: 0 0 8px 0;
+        margin: 0 0 10px 0;
         line-height: 1.4;
       }
 
@@ -196,7 +456,7 @@
         width: 100%;
         font-family: inherit;
         font-size: 13px;
-        padding: 7px 8px;
+        padding: 8px;
         border-radius: 4px;
         border: 1px solid var(--border);
         margin-bottom: 8px;
@@ -209,10 +469,16 @@
         background: var(--github);
         color: #ffffff;
         border-color: var(--github);
+        margin-bottom: 6px;
       }
 
       #github-panel-save:hover:not(:disabled) {
         background: var(--github-hover);
+      }
+
+      #github-panel-cancel {
+        font-size: 12px;
+        padding: 7px 10px;
       }
 
       /*
@@ -225,11 +491,11 @@
         display: none;
         position: fixed;
         inset: 0;
-        z-index: 1000;
+        z-index: 1200;
         align-items: center;
         justify-content: center;
         padding: 14px;
-        background: rgba(0, 0, 0, 0.35);
+        background: rgba(0, 0, 0, 0.4);
       }
 
       #github-confirm-overlay.open {
@@ -284,45 +550,90 @@
         background: var(--github-hover);
       }
 
-      .support-card {
-        margin: 4px 0 10px;
-        padding: 10px;
+      /*
+       * ---------------------------------------------------
+       * EXPORT SUCCESS MODAL
+       * ---------------------------------------------------
+       *
+       * Large, unmissable call-to-action buttons - this is
+       * the retention/support touch point, so Rate and
+       * Feedback need to actually be seen and clicked, not
+       * tucked away as small text.
+       */
+
+      #export-success-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1300;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+        background: rgba(0, 0, 0, 0.45);
+      }
+
+      #export-success-overlay.open {
+        display: flex;
+      }
+
+      #export-success-modal {
+        width: 100%;
+        padding: 20px 18px;
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        background: var(--canvas);
+        background: var(--surface);
+        box-shadow: 0 12px 32px rgba(27, 31, 36, 0.3);
         text-align: center;
       }
 
-      .support-card p {
+      #export-success-title {
         margin: 0 0 8px;
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      #export-success-message {
+        margin: 0 0 16px;
+        font-size: 12.5px;
         color: var(--text);
-        font-size: 12px;
+      }
+
+      #export-success-rate {
+        display: block;
+        padding: 11px 10px;
+        margin-bottom: 8px;
+        border-radius: var(--radius);
+        background: var(--accent);
+        color: #ffffff;
+        text-decoration: none;
+        font-size: 13.5px;
+        font-weight: 700;
+      }
+
+      #export-success-rate:hover {
+        background: var(--accent-hover);
+      }
+
+      #export-success-feedback {
+        display: block;
+        padding: 10px;
+        margin-bottom: 12px;
+        border-radius: var(--radius);
+        background: var(--github);
+        color: #ffffff;
+        text-decoration: none;
+        font-size: 13px;
         font-weight: 600;
       }
 
-      #github-star {
-        padding: 7px 10px;
-        background: var(--github);
-        color: #ffffff;
-        border-color: var(--github);
-      }
-
-      #github-star:hover:not(:disabled) {
+      #export-success-feedback:hover {
         background: var(--github-hover);
       }
 
-      .footer-link {
-        display: block;
-        text-align: center;
-        margin-top: 4px;
-        font-size: 11px;
-        color: var(--text-muted);
-        text-decoration: none;
-      }
-
-      .footer-link:hover {
-        color: var(--text);
-        text-decoration: underline;
+      #export-success-close {
+        font-size: 12px;
+        padding: 7px 10px;
       }
     </style>
   </head>
@@ -333,35 +644,90 @@
     </div>
 
     <button id="copy">Copy Conversation</button>
-
-    <div class="action-row">
-      <div id="export-wrapper">
-        <button id="export">Export ▾</button>
-      </div>
-
-      <button id="github-toggle">
-        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-          <path
-            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
-          />
-        </svg>
-        GitHub
-      </button>
-    </div>
-
-    <div id="export-menu">
-      <button id="export-md">Export as .md</button>
-      <button id="export-txt">Export as .txt</button>
-    </div>
-
-    <div id="github-panel">
-      <p id="github-panel-message">Choose a repo to save into.</p>
-      <select id="github-repo-select"></select>
-      <button id="github-panel-save">Save to exports/</button>
-    </div>
+    <button id="export">Export ▾</button>
 
     <a class="footer-link" id="options-link" href="#">Settings</a>
 
+    <!-- Loading overlay: covers the popup while messages fetch -->
+    <div id="loading-overlay">
+      <div id="loading-overlay-content">
+        <div
+          id="loading-overlay-spinner"
+          role="status"
+          aria-label="Loading"
+        ></div>
+        <p id="loading-overlay-message">Loading messages...</p>
+      </div>
+    </div>
+
+    <!-- On-screen toast for quick action feedback -->
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <!-- Message selector / export panel -->
+    <div
+      id="selector-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="selector-title"
+    >
+      <div id="selector-modal">
+        <p id="selector-title">Select Messages</p>
+        <p id="selector-panel-message">
+          Choose which messages to include, then pick a format.
+        </p>
+
+        <div class="selector-filter-row">
+          <button id="selector-filter-all" type="button">All</button>
+          <button id="selector-filter-questions" type="button">
+            Questions
+          </button>
+          <button id="selector-filter-answers" type="button">Answers</button>
+          <button id="selector-filter-none" type="button">None</button>
+          <button id="selector-filter-invert" type="button">Invert</button>
+        </div>
+
+        <label class="selector-expand-row">
+          <input type="checkbox" id="selector-expand-toggle" />
+          Expand messages (show full text)
+        </label>
+
+        <div id="selector-list"></div>
+
+        <div class="selector-footer-row">
+          <span id="selector-count">0/0 selected</span>
+        </div>
+
+        <div class="selector-action-row">
+          <select id="selector-format-select">
+            <option value="md">Markdown (.md)</option>
+            <option value="txt">Plain text (.txt)</option>
+            <option value="json">JSON (.json)</option>
+            <option value="csv">CSV (.csv)</option>
+          </select>
+          <button id="selector-export" type="button">Export</button>
+          <button id="selector-github-button" type="button">GitHub</button>
+        </div>
+
+        <button id="selector-cancel" type="button">Cancel</button>
+      </div>
+    </div>
+
+    <!-- GitHub repo picker panel -->
+    <div
+      id="github-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="github-panel-message"
+    >
+      <div id="github-panel-modal">
+        <p id="github-panel-message">Choose a repo to save into.</p>
+        <select id="github-repo-select"></select>
+        <button id="github-panel-save">Save to exports/</button>
+        <button id="github-panel-cancel" type="button">Cancel</button>
+      </div>
+    </div>
+
+    <!-- GitHub export confirmation modal -->
     <div
       id="github-confirm-overlay"
       role="dialog"
@@ -386,6 +752,41 @@
             Export to GitHub
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- Export success modal -->
+    <div
+      id="export-success-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="export-success-title"
+    >
+      <div id="export-success-modal">
+        <p id="export-success-title">✅ Export Successful!</p>
+        <p id="export-success-message">
+          Your conversation has been exported successfully.
+        </p>
+
+        <a
+          id="export-success-rate"
+          href="https://chromewebstore.google.com/detail/REPLACE_WITH_YOUR_EXTENSION_ID"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          ⭐ Rate on Chrome Web Store
+        </a>
+
+        <a
+          id="export-success-feedback"
+          href="https://github.com/GrantTotinov/GPTChatDownloader/issues"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          💬 Send Feedback / Report a Bug
+        </a>
+
+        <button id="export-success-close" type="button">Close</button>
       </div>
     </div>
 

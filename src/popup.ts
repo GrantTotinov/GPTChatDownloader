@@ -1,7 +1,9 @@
 import { SEPARATOR_TEXT, loadSettings } from "./settings.ts";
 
 import { stripMarkdown } from "./markdown-strip.ts";
+
 const PROJECT_REPOSITORY = "GrantTotinov/GPTChatDownloader";
+
 const devLog = (...args: unknown[]): void => {
   if (import.meta.env.DEV) {
     console.log(...args);
@@ -27,66 +29,120 @@ interface Message {
   order: number;
 }
 
+type ExportFormat = "md" | "txt" | "json" | "csv";
+
+/*
+ * ---------------------------------------------------------
+ * DOM REFERENCES
+ * ---------------------------------------------------------
+ */
+
 const copyButton = document.getElementById("copy") as HTMLButtonElement;
-
 const exportButton = document.getElementById("export") as HTMLButtonElement;
-
-const exportMenu = document.getElementById("export-menu") as HTMLDivElement;
-
-const exportMdButton = document.getElementById(
-  "export-md",
-) as HTMLButtonElement;
-
-const exportTxtButton = document.getElementById(
-  "export-txt",
-) as HTMLButtonElement;
-
-const githubToggleButton = document.getElementById(
-  "github-toggle",
-) as HTMLButtonElement;
-
-const githubPanel = document.getElementById("github-panel") as HTMLDivElement;
-
-const githubPanelMessage = document.getElementById(
-  "github-panel-message",
-) as HTMLParagraphElement;
-
-const githubRepoSelect = document.getElementById(
-  "github-repo-select",
-) as HTMLSelectElement;
-
-const githubPanelSaveButton = document.getElementById(
-  "github-panel-save",
-) as HTMLButtonElement;
-
 const optionsLink = document.getElementById(
   "options-link",
 ) as HTMLAnchorElement;
-
 const githubStarButton = document.getElementById(
   "github-star",
 ) as HTMLButtonElement;
 
+/* Loading overlay (covers the whole popup while messages load) */
+const loadingOverlay = document.getElementById(
+  "loading-overlay",
+) as HTMLDivElement;
+const loadingOverlayMessage = document.getElementById(
+  "loading-overlay-message",
+) as HTMLParagraphElement;
+
+/* Toast (on-screen feedback for button actions) */
+const toast = document.getElementById("toast") as HTMLDivElement;
+
+/* Message selector / export panel */
+const selectorOverlay = document.getElementById(
+  "selector-overlay",
+) as HTMLDivElement;
+const selectorPanelMessage = document.getElementById(
+  "selector-panel-message",
+) as HTMLParagraphElement;
+const selectorList = document.getElementById("selector-list") as HTMLDivElement;
+const selectorFilterAllButton = document.getElementById(
+  "selector-filter-all",
+) as HTMLButtonElement;
+const selectorFilterQuestionsButton = document.getElementById(
+  "selector-filter-questions",
+) as HTMLButtonElement;
+const selectorFilterAnswersButton = document.getElementById(
+  "selector-filter-answers",
+) as HTMLButtonElement;
+const selectorFilterNoneButton = document.getElementById(
+  "selector-filter-none",
+) as HTMLButtonElement;
+const selectorFilterInvertButton = document.getElementById(
+  "selector-filter-invert",
+) as HTMLButtonElement;
+const selectorExpandToggle = document.getElementById(
+  "selector-expand-toggle",
+) as HTMLInputElement;
+const selectorCount = document.getElementById(
+  "selector-count",
+) as HTMLSpanElement;
+const selectorFormatSelect = document.getElementById(
+  "selector-format-select",
+) as HTMLSelectElement;
+const selectorGithubButton = document.getElementById(
+  "selector-github-button",
+) as HTMLButtonElement;
+const selectorCancelButton = document.getElementById(
+  "selector-cancel",
+) as HTMLButtonElement;
+const selectorExportButton = document.getElementById(
+  "selector-export",
+) as HTMLButtonElement;
+
+/* GitHub repo picker panel (opened from selectorGithubButton) */
+const githubPanel = document.getElementById("github-panel") as HTMLDivElement;
+const githubPanelMessage = document.getElementById(
+  "github-panel-message",
+) as HTMLParagraphElement;
+const githubRepoSelect = document.getElementById(
+  "github-repo-select",
+) as HTMLSelectElement;
+const githubPanelSaveButton = document.getElementById(
+  "github-panel-save",
+) as HTMLButtonElement;
+const githubPanelCancelButton = document.getElementById(
+  "github-panel-cancel",
+) as HTMLButtonElement;
+
+/* GitHub export confirmation modal */
 const githubConfirmOverlay = document.getElementById(
   "github-confirm-overlay",
 ) as HTMLDivElement;
-
 const githubConfirmCancelButton = document.getElementById(
   "github-confirm-cancel",
 ) as HTMLButtonElement;
-
 const githubConfirmExportButton = document.getElementById(
   "github-confirm-export",
 ) as HTMLButtonElement;
 
+/* Export success modal */
+const exportSuccessOverlay = document.getElementById(
+  "export-success-overlay",
+) as HTMLDivElement;
+const exportSuccessCloseButton = document.getElementById(
+  "export-success-close",
+) as HTMLButtonElement;
+const exportSuccessRateLink = document.getElementById(
+  "export-success-rate",
+) as HTMLAnchorElement;
+
 const allButtons = [
   copyButton,
   exportButton,
-  exportMdButton,
-  exportTxtButton,
-  githubToggleButton,
-  githubPanelSaveButton,
   githubStarButton,
+  selectorExportButton,
+  selectorGithubButton,
+  githubPanelSaveButton,
 ];
 
 optionsLink.addEventListener("click", (event) => {
@@ -94,50 +150,25 @@ optionsLink.addEventListener("click", (event) => {
   chrome.runtime.openOptionsPage();
 });
 
-githubStarButton.addEventListener("click", async () => {
-  githubStarButton.disabled = true;
-  githubStarButton.textContent = "Opening GitHub...";
-
-  try {
-    const response = await chrome.runtime.sendMessage({
-      type: "GITHUB_STAR_PROJECT",
-    });
-
-    if (response?.success) {
-      showResult(githubStarButton, "Thanks for the star! ⭐", 2500);
-
-      return;
-    }
-  } catch (error) {
-    devWarn("GPTChatDownloader: direct GitHub star failed", error);
-  }
-
-  await chrome.tabs.create({
-    url: `https://github.com/${PROJECT_REPOSITORY}`,
-  });
-  showResult(githubStarButton, "Opened GitHub", 2000);
-});
-
 /*
  * ---------------------------------------------------------
- * EXPORT MENU TOGGLE
+ * TOAST (on-screen feedback, replaces button textContent
+ * swaps like "Copied!"/"Downloaded!")
  * ---------------------------------------------------------
  */
-exportButton.addEventListener("click", () => {
-  closeGithubPanel();
-  exportMenu.classList.toggle("open");
-});
+let toastTimeoutId: number | undefined;
 
-document.addEventListener("click", (event) => {
-  const target = event.target as Node;
+function showToast(message: string, ms = 2000): void {
+  toast.textContent = message;
+  toast.classList.add("visible");
 
-  if (!exportButton.contains(target) && !exportMenu.contains(target)) {
-    exportMenu.classList.remove("open");
+  if (toastTimeoutId !== undefined) {
+    window.clearTimeout(toastTimeoutId);
   }
-});
 
-function closeExportMenu(): void {
-  exportMenu.classList.remove("open");
+  toastTimeoutId = window.setTimeout(() => {
+    toast.classList.remove("visible");
+  }, ms);
 }
 
 /*
@@ -145,31 +176,70 @@ function closeExportMenu(): void {
  * BUSY STATE
  * ---------------------------------------------------------
  */
-function setBusy(button: HTMLButtonElement, text: string): void {
+function setBusy(busy: boolean): void {
   for (const button of allButtons) {
-    button.disabled = true;
+    button.disabled = busy;
   }
-
-  button.textContent = text;
 }
 
 function resetButtons(): void {
-  for (const button of allButtons) {
-    button.disabled = false;
-  }
-
-  copyButton.textContent = "Copy Conversation";
-  exportButton.textContent = "Export ▾";
-  exportMdButton.textContent = "Export as .md";
-  exportTxtButton.textContent = "Export as .txt";
-  githubPanelSaveButton.textContent = "Save to exports/";
-  githubStarButton.textContent = "★ Star on GitHub";
+  setBusy(false);
 }
 
-function showResult(button: HTMLButtonElement, text: string, ms: number): void {
-  button.textContent = text;
+/*
+ * ---------------------------------------------------------
+ * OVERLAY SIZE TRACKING
+ * ---------------------------------------------------------
+ *
+ * The popup's <body> stays sized to its small, normal content
+ * (Copy/Export buttons only) until an overlay needs the full
+ * 600px Chrome popup height to show a scrollable list/modal.
+ * body.overlay-open is what triggers that larger fixed height
+ * in CSS. A count (not a boolean) because overlays can stack
+ * - e.g. the GitHub confirm modal opens on top of the GitHub
+ * repo panel - so the small size should only return once
+ * every open overlay has closed, not as soon as the top one
+ * does.
+ */
+let openOverlayCount = 0;
 
-  setTimeout(resetButtons, ms);
+function markOverlayOpened(): void {
+  openOverlayCount++;
+  document.body.classList.add("overlay-open");
+}
+
+function markOverlayClosed(): void {
+  openOverlayCount = Math.max(0, openOverlayCount - 1);
+
+  if (openOverlayCount === 0) {
+    document.body.classList.remove("overlay-open");
+  }
+}
+
+/*
+ * ---------------------------------------------------------
+ * LOADING OVERLAY
+ * ---------------------------------------------------------
+ *
+ * Covers the entire popup with a dimmed, non-interactive
+ * layer while the conversation is being fetched from the
+ * page. Prevents the person from clicking other buttons
+ * mid-load (which previously could kick off a second,
+ * overlapping fetch) and makes it visually obvious that
+ * something is happening rather than the popup looking
+ * unresponsive.
+ */
+function showLoadingOverlay(message: string): void {
+  loadingOverlayMessage.textContent = message;
+  loadingOverlay.classList.add("open");
+  markOverlayOpened();
+  setBusy(true);
+}
+
+function hideLoadingOverlay(): void {
+  loadingOverlay.classList.remove("open");
+  markOverlayClosed();
+  setBusy(false);
 }
 
 /*
@@ -178,22 +248,19 @@ function showResult(button: HTMLButtonElement, text: string, ms: number): void {
  * ---------------------------------------------------------
  *
  * The content script sends EXPORT_PROGRESS messages while
- * it scrolls through the conversation. Reflect that on
- * whichever button triggered the export, so long
- * conversations don't look frozen.
+ * it paginates through the conversation. Reflect that on the
+ * loading overlay so long conversations don't look frozen.
  */
-let activeButton: HTMLButtonElement | null = null;
-
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type !== "EXPORT_PROGRESS") {
     return;
   }
 
-  if (!activeButton) {
+  if (!loadingOverlay.classList.contains("open")) {
     return;
   }
 
-  activeButton.textContent = `Loading... (${message.collected})`;
+  loadingOverlayMessage.textContent = `Loading messages... (${message.collected})`;
 });
 
 /*
@@ -206,7 +273,7 @@ chrome.runtime.onMessage.addListener((message) => {
  */
 function buildFilename(
   tabTitle: string | undefined,
-  extension: "md" | "txt",
+  extension: ExportFormat,
 ): string {
   const date = new Date();
 
@@ -218,12 +285,6 @@ function buildFilename(
     String(date.getDate()).padStart(2, "0");
 
   const rawTitle = (tabTitle ?? "conversation")
-    /*
-     * ChatGPT tab titles are usually just the
-     * conversation title with no suffix, but
-     * strip a trailing "ChatGPT" / separator
-     * defensively in case that ever changes.
-     */
     .replace(/\s*[-|]\s*ChatGPT\s*$/i, "")
     .trim();
 
@@ -240,81 +301,54 @@ function buildFilename(
 
 /*
  * ---------------------------------------------------------
- * FETCH + BUILD MARKDOWN
+ * JSON / CSV BUILDERS
  * ---------------------------------------------------------
- *
- * Shared by the copy and export flows.
  */
-async function fetchConversationMarkdown(
-  button: HTMLButtonElement,
-): Promise<{ markdown: string; tabTitle: string | undefined }> {
-  const [tab] = await chrome.tabs.query({
-    active: true,
-    currentWindow: true,
-  });
+function buildJson(messages: Message[]): string {
+  return JSON.stringify(
+    messages.map((message) => ({
+      role: message.role,
+      content: message.content,
+    })),
+    null,
+    2,
+  );
+}
 
-  if (!tab.id) {
-    throw new Error("No active tab");
+function escapeCsvField(value: string): string {
+  if (/[",\n\r]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
   }
 
-  if (!tab.url?.startsWith("https://chatgpt.com/")) {
-    throw new Error("Open a chatgpt.com conversation first");
-  }
+  return value;
+}
 
-  devLog("GPTChatDownloader: requesting conversation");
+function buildCsv(messages: Message[]): string {
+  const header = "role,content";
 
-  activeButton = button;
+  const rows = messages.map(
+    (message) =>
+      `${escapeCsvField(message.role)},${escapeCsvField(message.content)}`,
+  );
 
-  let response;
+  return [header, ...rows].join("\r\n");
+}
 
-  try {
-    response = await chrome.tabs.sendMessage(tab.id, {
-      type: "LOAD_CONVERSATION",
-    });
-  } catch (sendError) {
-    /*
-     * "Could not establish connection" means the
-     * content script isn't running in this tab -
-     * usually because the extension was reloaded
-     * after the tab was already open. Reload the
-     * tab and retry once.
-     */
-    devWarn(
-      "GPTChatDownloader: no content script, reloading tab and retrying",
-      sendError,
-    );
-
-    await chrome.tabs.reload(tab.id);
-
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    response = await chrome.tabs.sendMessage(tab.id, {
-      type: "LOAD_CONVERSATION",
-    });
-  }
-
-  if (!response?.success) {
-    throw new Error(response?.error ?? "Failed to load conversation");
-  }
-
-  const messages = response.data as Message[];
-
-  devLog(`GPTChatDownloader: received ${messages.length} messages`);
-
-  if (messages.length === 0) {
-    throw new Error("No messages found in this conversation");
-  }
-
+/*
+ * ---------------------------------------------------------
+ * BUILD MARKDOWN FROM MESSAGES
+ * ---------------------------------------------------------
+ */
+async function buildMarkdownFromMessages(messages: Message[]): Promise<string> {
   const settings = await loadSettings();
 
   const timestamp = settings.includeTimestamp
     ? `_Exported ${new Date().toLocaleString()}_\n\n`
     : "";
 
-  const markdown =
+  return (
     timestamp +
     messages
-      .sort((a, b) => a.order - b.order)
       .map((message) => {
         const roleLabel = message.role === "user" ? "User" : "Assistant";
 
@@ -335,26 +369,122 @@ async function fetchConversationMarkdown(
 
         return heading ? `${heading}\n\n${message.content}` : message.content;
       })
-      .join(SEPARATOR_TEXT[settings.messageSeparator]);
+      .join(SEPARATOR_TEXT[settings.messageSeparator])
+  );
+}
 
-  devLog("GPTChatDownloader: generated markdown");
+function buildContentForFormat(
+  format: ExportFormat,
+  markdown: string,
+  messages: Message[],
+): { content: string; mimeType: string } {
+  switch (format) {
+    case "txt":
+      return { content: stripMarkdown(markdown), mimeType: "text/plain" };
+    case "json":
+      return { content: buildJson(messages), mimeType: "application/json" };
+    case "csv":
+      return { content: buildCsv(messages), mimeType: "text/csv" };
+    case "md":
+    default:
+      return { content: markdown, mimeType: "text/markdown" };
+  }
+}
 
-  return { markdown, tabTitle: tab.title };
+/*
+ * ---------------------------------------------------------
+ * LOAD CONVERSATION MESSAGES
+ * ---------------------------------------------------------
+ *
+ * Fetches the raw message list from the content script, with
+ * no formatting applied. Shows the loading overlay for the
+ * full duration so the person can't click anything else in
+ * the popup mid-fetch.
+ */
+async function loadConversationMessages(): Promise<{
+  messages: Message[];
+  tabTitle: string | undefined;
+}> {
+  showLoadingOverlay("Loading messages...");
+
+  try {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    if (!tab.id) {
+      throw new Error("No active tab");
+    }
+
+    if (!tab.url?.startsWith("https://chatgpt.com/")) {
+      throw new Error("Open a chatgpt.com conversation first");
+    }
+
+    devLog("GPTChatDownloader: requesting conversation");
+
+    let response;
+
+    try {
+      response = await chrome.tabs.sendMessage(tab.id, {
+        type: "LOAD_CONVERSATION",
+      });
+    } catch (sendError) {
+      devWarn(
+        "GPTChatDownloader: no content script, reloading tab and retrying",
+        sendError,
+      );
+
+      loadingOverlayMessage.textContent = "Reconnecting to ChatGPT tab...";
+
+      await chrome.tabs.reload(tab.id);
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      loadingOverlayMessage.textContent = "Loading messages...";
+
+      response = await chrome.tabs.sendMessage(tab.id, {
+        type: "LOAD_CONVERSATION",
+      });
+    }
+
+    if (!response?.success) {
+      throw new Error(response?.error ?? "Failed to load conversation");
+    }
+
+    const messages = response.data as Message[];
+
+    devLog(`GPTChatDownloader: received ${messages.length} messages`);
+
+    if (messages.length === 0) {
+      throw new Error("No messages found in this conversation");
+    }
+
+    const sortedMessages = [...messages].sort((a, b) => a.order - b.order);
+
+    return { messages: sortedMessages, tabTitle: tab.title };
+  } finally {
+    hideLoadingOverlay();
+  }
 }
 
 /*
  * ---------------------------------------------------------
  * COPY TO CLIPBOARD
  * ---------------------------------------------------------
+ *
+ * Copy always uses the full conversation - no message
+ * selection step, matching the one-click "quick copy" role
+ * this button has always had. Message selection is reserved
+ * for Export.
  */
 copyButton.addEventListener("click", async () => {
   devLog("GPTChatDownloader: copy clicked");
 
-  closeExportMenu();
-  setBusy(copyButton, "Loading...");
-
   try {
-    const { markdown } = await fetchConversationMarkdown(copyButton);
+    const { messages } = await loadConversationMessages();
+
+    const markdown = await buildMarkdownFromMessages(messages);
 
     const copyResponse = await chrome.runtime.sendMessage({
       type: "COPY_TO_CLIPBOARD",
@@ -367,40 +497,261 @@ copyButton.addEventListener("click", async () => {
       throw new Error(copyResponse?.error ?? "Failed to copy markdown");
     }
 
-    showResult(copyButton, "Copied!", 1500);
+    showToast("Copied to clipboard!");
   } catch (error) {
     devError("GPTChatDownloader: copy failed", error);
 
     const message = error instanceof Error ? error.message : String(error);
 
-    showResult(copyButton, message.length < 40 ? message : "Error", 2500);
-  } finally {
-    activeButton = null;
+    showToast(message.length < 60 ? message : "Copy failed", 3000);
   }
 });
 
 /*
  * ---------------------------------------------------------
- * DOWNLOAD (shared by .md / .txt)
+ * MESSAGE SELECTOR / EXPORT PANEL
+ * ---------------------------------------------------------
+ *
+ * Export always opens this panel first, every time. It loads
+ * the full conversation, lets the person narrow it down with
+ * checkboxes/filters/Shift+Click range select and an "expand"
+ * toggle to read full message text, then either downloads the
+ * chosen format directly or opens the GitHub repo picker for
+ * a Markdown save.
+ */
+let currentMessages: Message[] = [];
+let currentTabTitle: string | undefined;
+let lastShiftAnchorIndex: number | null = null;
+
+function closeSelectorOverlay(): void {
+  selectorOverlay.classList.remove("open");
+  markOverlayClosed();
+}
+
+function getSelectedMessages(): Message[] {
+  const checkboxes = Array.from(
+    selectorList.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+  );
+
+  return checkboxes
+    .filter((box) => box.checked)
+    .map((box) => currentMessages[Number(box.dataset.index)])
+    .filter((message): message is Message => Boolean(message));
+}
+
+function updateSelectorCount(): void {
+  const checkboxes = selectorList.querySelectorAll<HTMLInputElement>(
+    'input[type="checkbox"]',
+  );
+
+  const checked = Array.from(checkboxes).filter((box) => box.checked).length;
+
+  selectorCount.textContent = `${checked}/${checkboxes.length} selected`;
+
+  const hasSelection = checked > 0;
+  selectorExportButton.disabled = !hasSelection;
+  selectorGithubButton.disabled = !hasSelection;
+}
+
+function renderSelectorList(messages: Message[]): void {
+  selectorList.innerHTML = "";
+  lastShiftAnchorIndex = null;
+
+  messages.forEach((message, index) => {
+    const row = document.createElement("label");
+    row.className = "selector-row";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = true;
+    checkbox.dataset.index = String(index);
+
+    const roleIcon = document.createElement("span");
+    roleIcon.className = "selector-role-icon";
+    roleIcon.textContent = message.role === "user" ? "🧑" : "🤖";
+
+    const preview = document.createElement("span");
+    preview.className = "selector-preview";
+    preview.dataset.full = message.content;
+    preview.dataset.short =
+      message.content.length > 70
+        ? `${message.content.slice(0, 70)}…`
+        : message.content;
+    preview.textContent = preview.dataset.short;
+
+    row.append(checkbox, roleIcon, preview);
+    selectorList.appendChild(row);
+
+    checkbox.addEventListener("click", (event) => {
+      const mouseEvent = event as MouseEvent;
+
+      if (mouseEvent.shiftKey && lastShiftAnchorIndex !== null) {
+        const start = Math.min(lastShiftAnchorIndex, index);
+        const end = Math.max(lastShiftAnchorIndex, index);
+
+        const allCheckboxes = selectorList.querySelectorAll<HTMLInputElement>(
+          'input[type="checkbox"]',
+        );
+
+        for (let i = start; i <= end; i++) {
+          const box = allCheckboxes[i];
+
+          if (box) {
+            box.checked = checkbox.checked;
+          }
+        }
+      }
+
+      lastShiftAnchorIndex = index;
+      updateSelectorCount();
+    });
+  });
+
+  applyExpandState();
+  updateSelectorCount();
+}
+
+/*
+ * "Expand" toggle: when on, every message preview shows full
+ * text (wrapped, scrollable within the list) instead of a
+ * truncated one-line preview.
+ */
+function applyExpandState(): void {
+  const previews =
+    selectorList.querySelectorAll<HTMLSpanElement>(".selector-preview");
+
+  previews.forEach((preview) => {
+    preview.textContent = selectorExpandToggle.checked
+      ? (preview.dataset.full ?? "")
+      : (preview.dataset.short ?? "");
+  });
+
+  selectorList.classList.toggle("expanded", selectorExpandToggle.checked);
+}
+
+selectorExpandToggle.addEventListener("change", applyExpandState);
+
+function setAllCheckboxes(checked: boolean): void {
+  const checkboxes = selectorList.querySelectorAll<HTMLInputElement>(
+    'input[type="checkbox"]',
+  );
+
+  checkboxes.forEach((box) => {
+    box.checked = checked;
+  });
+
+  updateSelectorCount();
+}
+
+selectorFilterAllButton.addEventListener("click", () => setAllCheckboxes(true));
+selectorFilterNoneButton.addEventListener("click", () =>
+  setAllCheckboxes(false),
+);
+
+selectorFilterQuestionsButton.addEventListener("click", () => {
+  const checkboxes = selectorList.querySelectorAll<HTMLInputElement>(
+    'input[type="checkbox"]',
+  );
+
+  checkboxes.forEach((box) => {
+    const index = Number(box.dataset.index);
+    box.checked = currentMessages[index]?.role === "user";
+  });
+
+  updateSelectorCount();
+});
+
+selectorFilterAnswersButton.addEventListener("click", () => {
+  const checkboxes = selectorList.querySelectorAll<HTMLInputElement>(
+    'input[type="checkbox"]',
+  );
+
+  checkboxes.forEach((box) => {
+    const index = Number(box.dataset.index);
+    box.checked = currentMessages[index]?.role === "assistant";
+  });
+
+  updateSelectorCount();
+});
+
+selectorFilterInvertButton.addEventListener("click", () => {
+  const checkboxes = selectorList.querySelectorAll<HTMLInputElement>(
+    'input[type="checkbox"]',
+  );
+
+  checkboxes.forEach((box) => {
+    box.checked = !box.checked;
+  });
+
+  updateSelectorCount();
+});
+
+selectorCancelButton.addEventListener("click", () => {
+  closeSelectorOverlay();
+});
+
+/*
+ * Main "Export" button: always opens the selector panel,
+ * every time - it never skips straight to a download.
+ */
+exportButton.addEventListener("click", async () => {
+  devLog("GPTChatDownloader: export clicked, opening selector");
+
+  try {
+    const { messages, tabTitle } = await loadConversationMessages();
+
+    currentMessages = messages;
+    currentTabTitle = tabTitle;
+
+    selectorPanelMessage.textContent =
+      "Choose which messages to include, then pick a format.";
+    selectorExpandToggle.checked = false;
+
+    renderSelectorList(messages);
+
+    selectorOverlay.classList.add("open");
+    markOverlayOpened();
+  } catch (error) {
+    devError("GPTChatDownloader: failed to load messages for export", error);
+
+    const message = error instanceof Error ? error.message : String(error);
+
+    showToast(
+      message.length < 60 ? message : "Failed to load conversation",
+      3000,
+    );
+  }
+});
+
+/*
+ * ---------------------------------------------------------
+ * DOWNLOAD FROM SELECTOR
  * ---------------------------------------------------------
  */
-async function downloadAs(
-  button: HTMLButtonElement,
-  format: "md" | "txt",
-): Promise<void> {
-  closeExportMenu();
-  setBusy(button, "Loading...");
+selectorExportButton.addEventListener("click", async () => {
+  const chosen = getSelectedMessages();
+
+  if (chosen.length === 0) {
+    return;
+  }
+
+  const format = selectorFormatSelect.value as ExportFormat;
+
+  closeSelectorOverlay();
+  setBusy(true);
 
   let objectUrl: string | undefined;
 
   try {
-    const { markdown, tabTitle } = await fetchConversationMarkdown(button);
+    const markdown = await buildMarkdownFromMessages(chosen);
 
-    const content = format === "txt" ? stripMarkdown(markdown) : markdown;
+    const { content, mimeType } = buildContentForFormat(
+      format,
+      markdown,
+      chosen,
+    );
 
-    const mimeType = format === "txt" ? "text/plain" : "text/markdown";
-
-    const filename = buildFilename(tabTitle, format);
+    const filename = buildFilename(currentTabTitle, format);
 
     const blob = new Blob([content], { type: mimeType });
 
@@ -408,14 +759,6 @@ async function downloadAs(
 
     const settings = await loadSettings();
 
-    /*
-     * saveAs: true opens the browser's native "Save As" dialog
-     * instead of silently dropping the file into the default
-     * Downloads folder, so the person can pick any folder each
-     * time (e.g. a Dropbox/OneDrive sync folder). This option
-     * behaves identically in Chrome and Firefox - no
-     * browser-specific branching needed.
-     */
     const downloadId = await chrome.downloads.download({
       url: objectUrl,
       filename,
@@ -424,64 +767,46 @@ async function downloadAs(
 
     devLog("GPTChatDownloader: download started", downloadId);
 
-    showResult(button, "Downloaded!", 1500);
+    showToast("Download started...");
+
+    /*
+     * The success overlay is NOT shown here - see the
+     * DOWNLOAD_TRACK / DOWNLOAD_COMPLETE comment further
+     * below and background.ts for why.
+     */
+    chrome.runtime
+      .sendMessage({ type: "DOWNLOAD_TRACK", downloadId })
+      .catch(() => {
+        openExportSuccess();
+      });
   } catch (error) {
     devError("GPTChatDownloader: download failed", error);
 
     const message = error instanceof Error ? error.message : String(error);
 
-    showResult(button, message.length < 40 ? message : "Error", 2500);
+    showToast(message.length < 60 ? message : "Download failed", 3000);
   } finally {
-    activeButton = null;
+    resetButtons();
 
-    /*
-     * Release the object URL once the download has
-     * had time to start reading it. Chrome needs the
-     * URL to remain valid slightly after the download
-     * call returns.
-     */
     if (objectUrl) {
       const url = objectUrl;
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     }
   }
-}
-
-exportMdButton.addEventListener("click", () => {
-  devLog("GPTChatDownloader: export .md clicked");
-  void downloadAs(exportMdButton, "md");
-});
-
-exportTxtButton.addEventListener("click", () => {
-  devLog("GPTChatDownloader: export .txt clicked");
-  void downloadAs(exportTxtButton, "txt");
 });
 
 /*
  * ---------------------------------------------------------
- * SAVE TO GITHUB
+ * SAVE TO GITHUB (from selector)
  * ---------------------------------------------------------
  *
- * "Save to GitHub" in the export menu opens a small inline
- * panel (there's no room in a 220px popup for a separate
- * picker page) with a repo <select> and a Save button. The
- * panel is populated lazily, only when opened, so a person
- * who never uses this feature never pays for a GITHUB_LIST_REPOS
- * round trip.
+ * Opens the existing repo-picker panel. Always saves as
+ * Markdown, matching the repo's exports/ convention.
  */
-
-interface GitHubRepoOption {
-  full_name: string;
-  name: string;
-}
-
-function closeGithubPanel(): void {
-  githubPanel.classList.remove("open");
-}
-
 async function openGithubPanel(): Promise<void> {
-  closeExportMenu();
+  closeSelectorOverlay();
   githubPanel.classList.add("open");
+  markOverlayOpened();
 
   githubPanelMessage.textContent = "Loading your repos...";
   githubRepoSelect.innerHTML = "";
@@ -517,7 +842,7 @@ async function openGithubPanel(): Promise<void> {
     return;
   }
 
-  const repos = reposResponse.data as GitHubRepoOption[];
+  const repos = reposResponse.data as { full_name: string }[];
 
   if (repos.length === 0) {
     githubPanelMessage.textContent = "No repos found that you can push to.";
@@ -538,34 +863,35 @@ async function openGithubPanel(): Promise<void> {
   githubPanelSaveButton.disabled = false;
 }
 
-githubToggleButton.addEventListener("click", () => {
-  devLog("GPTChatDownloader: GitHub toggle clicked");
+selectorGithubButton.addEventListener("click", () => {
+  const chosen = getSelectedMessages();
 
-  if (githubPanel.classList.contains("open")) {
-    closeGithubPanel();
-
+  if (chosen.length === 0) {
     return;
   }
 
   void openGithubPanel();
 });
 
-document.addEventListener("click", (event) => {
-  const target = event.target as Node;
+function closeGithubPanel(): void {
+  githubPanel.classList.remove("open");
+  markOverlayClosed();
+}
 
-  if (!githubToggleButton.contains(target) && !githubPanel.contains(target)) {
-    closeGithubPanel();
-  }
+githubPanelCancelButton.addEventListener("click", () => {
+  closeGithubPanel();
 });
 
 function closeGithubConfirm(): void {
   githubConfirmOverlay.classList.remove("open");
   githubConfirmExportButton.disabled = false;
   githubConfirmExportButton.textContent = "Export to GitHub";
+  markOverlayClosed();
 }
 
 function openGithubConfirm(): void {
   githubConfirmOverlay.classList.add("open");
+  markOverlayOpened();
 }
 
 githubConfirmCancelButton.addEventListener("click", () => {
@@ -585,15 +911,20 @@ async function saveToGitHub(): Promise<void> {
     return;
   }
 
+  const chosen = getSelectedMessages();
+
+  if (chosen.length === 0) {
+    return;
+  }
+
   closeGithubConfirm();
-  setBusy(githubPanelSaveButton, "Saving...");
+  setBusy(true);
+  githubPanelSaveButton.textContent = "Saving...";
 
   try {
-    const { markdown, tabTitle } = await fetchConversationMarkdown(
-      githubPanelSaveButton,
-    );
+    const markdown = await buildMarkdownFromMessages(chosen);
 
-    const filename = buildFilename(tabTitle, "md");
+    const filename = buildFilename(currentTabTitle, "md");
 
     const saveResponse = await chrome.runtime.sendMessage({
       type: "GITHUB_SAVE_FILE",
@@ -609,19 +940,17 @@ async function saveToGitHub(): Promise<void> {
     devLog("GPTChatDownloader: saved to GitHub", saveResponse.data);
 
     closeGithubPanel();
-    showResult(githubPanelSaveButton, "Saved!", 1500);
+    showToast("Saved to GitHub!");
+    openExportSuccess();
   } catch (error) {
     devError("GPTChatDownloader: GitHub save failed", error);
 
     const message = error instanceof Error ? error.message : String(error);
 
-    showResult(
-      githubPanelSaveButton,
-      message.length < 40 ? message : "Error",
-      2500,
-    );
+    showToast(message.length < 60 ? message : "GitHub save failed", 3000);
   } finally {
-    activeButton = null;
+    resetButtons();
+    githubPanelSaveButton.textContent = "Save to exports/";
   }
 }
 
@@ -637,4 +966,87 @@ githubPanelSaveButton.addEventListener("click", () => {
 
 githubConfirmExportButton.addEventListener("click", () => {
   void saveToGitHub();
+});
+
+/*
+ * ---------------------------------------------------------
+ * EXPORT SUCCESS MODAL
+ * ---------------------------------------------------------
+ *
+ * Shown after every successful file download or GitHub save.
+ * Retention/support touch point: rate on the store or send
+ * feedback. Its call-to-action buttons are large, on-screen
+ * elements in this modal (not tucked into a checkbox or
+ * inline label), since they're meant to actually be noticed
+ * and clicked.
+ */
+function openExportSuccess(): void {
+  exportSuccessOverlay.classList.add("open");
+  markOverlayOpened();
+}
+
+function closeExportSuccess(): void {
+  exportSuccessOverlay.classList.remove("open");
+  markOverlayClosed();
+}
+
+exportSuccessCloseButton.addEventListener("click", () => {
+  closeExportSuccess();
+});
+
+exportSuccessOverlay.addEventListener("click", (event) => {
+  if (event.target === exportSuccessOverlay) {
+    closeExportSuccess();
+  }
+});
+
+exportSuccessRateLink.addEventListener("click", () => {
+  closeExportSuccess();
+});
+
+/*
+ * Fired by background.ts's chrome.downloads.onChanged listener
+ * once a tracked download's state actually becomes "complete" -
+ * this is the real trigger for the success overlay, not the
+ * download Promise resolving (see the comment above
+ * chrome.downloads.download for why).
+ */
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "DOWNLOAD_COMPLETE") {
+    openExportSuccess();
+  }
+});
+
+/*
+ * ---------------------------------------------------------
+ * GITHUB STAR
+ * ---------------------------------------------------------
+ */
+githubStarButton.addEventListener("click", async () => {
+  githubStarButton.disabled = true;
+  githubStarButton.textContent = "Opening GitHub...";
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "GITHUB_STAR_PROJECT",
+    });
+
+    if (response?.success) {
+      showToast("Thanks for the star! ⭐");
+      githubStarButton.disabled = false;
+      githubStarButton.textContent = "★ Star on GitHub";
+
+      return;
+    }
+  } catch (error) {
+    devWarn("GPTChatDownloader: direct GitHub star failed", error);
+  }
+
+  await chrome.tabs.create({
+    url: `https://github.com/${PROJECT_REPOSITORY}`,
+  });
+
+  showToast("Opened GitHub");
+  githubStarButton.disabled = false;
+  githubStarButton.textContent = "★ Star on GitHub";
 });
