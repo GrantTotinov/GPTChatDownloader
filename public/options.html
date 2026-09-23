@@ -190,13 +190,13 @@
       .repository-link {
         display: inline-block;
         margin-bottom: 12px;
-        color: var(--github);
+        color: var(--text-muted);
         font-size: 13px;
         font-weight: 500;
       }
 
       .repository-link:hover {
-        color: var(--github-hover);
+        color: var(--text);
       }
 
       #github-connect {
@@ -371,6 +371,24 @@
     </fieldset>
 
     <fieldset>
+      <legend data-i18n="options.downloads.legend">Downloads</legend>
+      <label>
+        <input type="checkbox" id="askWhereToSave" />
+        <span data-i18n="options.downloads.askWhereToSave"
+          >Ask where to save each export</span
+        >
+      </label>
+      <a
+        class="repository-link"
+        id="downloads-settings-link"
+        href="#"
+        data-i18n="options.downloads.settingsLink"
+      >
+        Open browser download location settings
+      </a>
+    </fieldset>
+
+    <fieldset>
       <legend data-i18n="options.headings.legend">Message headings</legend>
       <label>
         <input type="radio" name="headingStyle" value="h2" />
@@ -418,24 +436,6 @@
           >Horizontal rule (<code>---</code>)</span
         >
       </label>
-    </fieldset>
-
-    <fieldset>
-      <legend data-i18n="options.downloads.legend">Downloads</legend>
-      <label>
-        <input type="checkbox" id="askWhereToSave" />
-        <span data-i18n="options.downloads.askWhereToSave"
-          >Ask where to save each export</span
-        >
-      </label>
-      <a
-        class="repository-link"
-        id="downloads-settings-link"
-        href="#"
-        data-i18n="options.downloads.settingsLink"
-      >
-        Open browser download location settings
-      </a>
     </fieldset>
 
     <fieldset>
