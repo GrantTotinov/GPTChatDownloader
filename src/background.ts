@@ -8,11 +8,24 @@ import {
   saveFileToRepo,
   starProject,
 } from "./github.ts";
+import { initI18n } from "./i18n.ts";
+
 const devError = (...args: unknown[]): void => {
   if (import.meta.env.DEV) {
     console.error(...args);
   }
 };
+
+/*
+ * Resolves the active language once per service worker
+ * lifetime, so the error messages github.ts throws (e.g.
+ * "Not connected to GitHub.") come back translated. MV3
+ * service workers are spun up fresh for practically every
+ * burst of activity, so this effectively re-syncs with the
+ * stored `language` preference every time it matters, without
+ * needing a storage-change listener.
+ */
+void initI18n();
 
 /*
  * ---------------------------------------------------------

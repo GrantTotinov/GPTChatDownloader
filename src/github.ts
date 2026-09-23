@@ -61,6 +61,8 @@
  * (GitHub -> Settings -> Developer settings -> OAuth Apps),
  * with "Enable Device Flow" turned on in that app's settings.
  */
+import { t } from "./i18n.ts";
+
 const GITHUB_CLIENT_ID = "Ov23livM5zFifnOcvad6";
 
 const GITHUB_SCOPE = "repo";
@@ -163,9 +165,7 @@ export async function startDeviceFlow(): Promise<DeviceCodeResponse> {
   const data = (await response.json()) as DeviceCodeResponse;
 
   if (!data.device_code || !data.user_code || !data.verification_uri) {
-    throw new Error(
-      "GitHub returned an unexpected response starting the device flow.",
-    );
+    throw new Error(t("github.error.deviceFlowUnexpected"));
   }
 
   return data;
@@ -237,25 +237,21 @@ export async function pollForAccessToken(
         continue;
 
       case "expired_token":
-        throw new Error(
-          "The GitHub sign-in code expired before it was used. Please try connecting again.",
-        );
+        throw new Error(t("github.error.codeExpired"));
 
       case "access_denied":
-        throw new Error("GitHub sign-in was cancelled.");
+        throw new Error(t("github.error.signinCancelled"));
 
       default:
         throw new Error(
           data.error_description ??
             data.error ??
-            "GitHub sign-in failed for an unknown reason.",
+            t("github.error.unknownSignin"),
         );
     }
   }
 
-  throw new Error(
-    "The GitHub sign-in code expired before it was used. Please try connecting again.",
-  );
+  throw new Error(t("github.error.codeExpired"));
 }
 
 /*
@@ -271,7 +267,7 @@ async function githubApiRequest(
   const token = await getStoredToken();
 
   if (!token) {
-    throw new Error("Not connected to GitHub.");
+    throw new Error(t("github.error.notConnected"));
   }
 
   const response = await fetch(`https://api.github.com${path}`, {
@@ -292,9 +288,7 @@ async function githubApiRequest(
      */
     await disconnectGitHub();
 
-    throw new Error(
-      "GitHub connection expired or was revoked. Please connect again.",
-    );
+    throw new Error(t("github.error.connectionExpired"));
   }
 
   return response;

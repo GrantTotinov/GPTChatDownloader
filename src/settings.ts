@@ -26,6 +26,15 @@ export interface Settings {
    */
   askWhereToSave: boolean;
   theme: "system" | "light" | "dark";
+  /*
+   * "auto" detects a supported language from the browser's
+   * UI language (via chrome.i18n.getUILanguage()/navigator.language)
+   * and falls back to English if none match. Any other value
+   * pins the UI to that language regardless of the browser's
+   * own locale. See src/i18n.ts for the detection logic and
+   * the list of supported languages.
+   */
+  language: "auto" | "en" | "es" | "fr" | "de" | "ru" | "zh";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -34,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   messageSeparator: "double",
   askWhereToSave: true,
   theme: "system",
+  language: "auto",
 };
 
 export const SEPARATOR_TEXT: Record<Settings["messageSeparator"], string> = {

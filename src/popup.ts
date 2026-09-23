@@ -1,4 +1,5 @@
 import { SEPARATOR_TEXT, loadSettings } from "./settings.ts";
+import { initI18n, applyTranslations, t } from "./i18n.ts";
 
 async function applyStoredTheme(): Promise<void> {
   const settings = await loadSettings();
@@ -11,6 +12,18 @@ async function applyStoredTheme(): Promise<void> {
 }
 
 void applyStoredTheme();
+
+/*
+ * initI18n()'s underlying chrome.storage.sync.get() resolves
+ * on the same tick the popup opens, well before a person can
+ * click anything - every string below that's set dynamically
+ * (toasts, button label swaps, etc.) happens later, inside
+ * event handlers, so it's safe to fire this without awaiting
+ * it at the top level.
+ */
+void initI18n().then(() => {
+  applyTranslations();
+});
 
 import { stripMarkdown } from "./markdown-strip.ts";
 
@@ -261,7 +274,7 @@ chrome.runtime.onMessage.addListener((message) => {
     return;
   }
 
-  loadingOverlayMessage.textContent = `Loading messages... (${message.collected})`;
+  loadingOverlayMessage.textContent = `${t("popup.loading.default")} (${message.collected})`;
 });
 
 /*
@@ -406,7 +419,7 @@ async function loadConversationMessages(): Promise<{
   messages: Message[];
   tabTitle: string | undefined;
 }> {
-  showLoadingOverlay("Loading messages...");
+  showLoadingOverlay(t("popup.loading.default"));
 
   try {
     const [tab] = await chrome.tabs.query({
@@ -415,11 +428,11 @@ async function loadConversationMessages(): Promise<{
     });
 
     if (!tab.id) {
-      throw new Error("No active tab");
+      throw new Error(t("popup.error.noActiveTab"));
     }
 
     if (!tab.url?.startsWith("https://chatgpt.com/")) {
-      throw new Error("Open a chatgpt.com conversation first");
+      throw new Error(t("popup.error.openChatGpt"));
     }
 
     devLog("GPTChatDownloader: requesting conversation");
@@ -436,13 +449,13 @@ async function loadConversationMessages(): Promise<{
         sendError,
       );
 
-      loadingOverlayMessage.textContent = "Reconnecting to ChatGPT tab...";
+      loadingOverlayMessage.textContent = t("popup.loading.reconnecting");
 
       await chrome.tabs.reload(tab.id);
 
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      loadingOverlayMessage.textContent = "Loading messages...";
+      loadingOverlayMessage.textContent = t("popup.loading.default");
 
       response = await chrome.tabs.sendMessage(tab.id, {
         type: "LOAD_CONVERSATION",
@@ -450,7 +463,9 @@ async function loadConversationMessages(): Promise<{
     }
 
     if (!response?.success) {
-      throw new Error(response?.error ?? "Failed to load conversation");
+      throw new Error(
+        response?.error ?? t("popup.error.loadConversationFailed"),
+      );
     }
 
     const messages = response.data as Message[];
@@ -458,7 +473,7 @@ async function loadConversationMessages(): Promise<{
     devLog(`GPTChatDownloader: received ${messages.length} messages`);
 
     if (messages.length === 0) {
-      throw new Error("No messages found in this conversation");
+      throw new Error(t("popup.error.noMessagesFound"));
     }
 
     const sortedMessages = [...messages].sort((a, b) => a.order - b.order);
@@ -495,16 +510,21 @@ copyButton.addEventListener("click", async () => {
     devLog("GPTChatDownloader: clipboard response", copyResponse);
 
     if (!copyResponse?.success) {
-      throw new Error(copyResponse?.error ?? "Failed to copy markdown");
+      throw new Error(
+        copyResponse?.error ?? t("popup.error.copyMarkdownFailed"),
+      );
     }
 
-    showToast("Copied to clipboard!");
+    showToast(t("popup.toast.copied"));
   } catch (error) {
     devError("GPTChatDownloader: copy failed", error);
 
     const message = error instanceof Error ? error.message : String(error);
 
-    showToast(message.length < 60 ? message : "Copy failed", 3000);
+    showToast(
+      message.length < 60 ? message : t("popup.toast.copyFailed"),
+      3000,
+    );
   }
 });
 
@@ -547,7 +567,10 @@ function updateSelectorCount(): void {
 
   const checked = Array.from(checkboxes).filter((box) => box.checked).length;
 
-  selectorCount.textContent = `${checked}/${checkboxes.length} selected`;
+  selectorCount.textContent = t("popup.selector.count", {
+    checked,
+    total: checkboxes.length,
+  });
 
   const hasSelection = checked > 0;
   selectorExportButton.disabled = !hasSelection;
@@ -704,8 +727,7 @@ exportButton.addEventListener("click", async () => {
     currentMessages = messages;
     currentTabTitle = tabTitle;
 
-    selectorPanelMessage.textContent =
-      "Choose which messages to include, then pick a format.";
+    selectorPanelMessage.textContent = t("popup.selector.subtitle");
     selectorExpandToggle.checked = false;
 
     renderSelectorList(messages);
@@ -718,7 +740,7 @@ exportButton.addEventListener("click", async () => {
     const message = error instanceof Error ? error.message : String(error);
 
     showToast(
-      message.length < 60 ? message : "Failed to load conversation",
+      message.length < 60 ? message : t("popup.error.loadConversationFailed"),
       3000,
     );
   }
@@ -768,7 +790,7 @@ selectorExportButton.addEventListener("click", async () => {
 
     devLog("GPTChatDownloader: download started", downloadId);
 
-    showToast("Download started...");
+    showToast(t("popup.toast.downloadStarted"));
 
     /*
      * The success overlay is NOT shown here - see the
@@ -785,7 +807,10 @@ selectorExportButton.addEventListener("click", async () => {
 
     const message = error instanceof Error ? error.message : String(error);
 
-    showToast(message.length < 60 ? message : "Download failed", 3000);
+    showToast(
+      message.length < 60 ? message : t("popup.toast.downloadFailed"),
+      3000,
+    );
   } finally {
     resetButtons();
 
@@ -809,7 +834,7 @@ async function openGithubPanel(): Promise<void> {
   githubPanel.classList.add("open");
   markOverlayOpened();
 
-  githubPanelMessage.textContent = "Loading your repos...";
+  githubPanelMessage.textContent = t("popup.github.loadingRepos");
   githubRepoSelect.innerHTML = "";
   githubRepoSelect.disabled = true;
   githubPanelSaveButton.disabled = true;
@@ -819,8 +844,7 @@ async function openGithubPanel(): Promise<void> {
   });
 
   if (!statusResponse?.success || !statusResponse.data?.connected) {
-    githubPanelMessage.innerHTML =
-      'Not connected. Open <a href="#" id="github-panel-settings-link">Settings</a> to connect GitHub first.';
+    githubPanelMessage.innerHTML = t("popup.github.notConnectedHtml");
 
     const settingsLink = document.getElementById("github-panel-settings-link");
 
@@ -838,7 +862,7 @@ async function openGithubPanel(): Promise<void> {
 
   if (!reposResponse?.success) {
     githubPanelMessage.textContent =
-      reposResponse?.error ?? "Failed to load repos.";
+      reposResponse?.error ?? t("popup.github.failedToLoad");
 
     return;
   }
@@ -846,12 +870,12 @@ async function openGithubPanel(): Promise<void> {
   const repos = reposResponse.data as { full_name: string }[];
 
   if (repos.length === 0) {
-    githubPanelMessage.textContent = "No repos found that you can push to.";
+    githubPanelMessage.textContent = t("popup.github.noRepos");
 
     return;
   }
 
-  githubPanelMessage.textContent = "Choose a repo to save into.";
+  githubPanelMessage.textContent = t("popup.github.chooseRepo");
 
   for (const repo of repos) {
     const option = document.createElement("option");
@@ -886,7 +910,7 @@ githubPanelCancelButton.addEventListener("click", () => {
 function closeGithubConfirm(): void {
   githubConfirmOverlay.classList.remove("open");
   githubConfirmExportButton.disabled = false;
-  githubConfirmExportButton.textContent = "Export to GitHub";
+  githubConfirmExportButton.textContent = t("popup.githubConfirm.export");
   markOverlayClosed();
 }
 
@@ -920,7 +944,7 @@ async function saveToGitHub(): Promise<void> {
 
   closeGithubConfirm();
   setBusy(true);
-  githubPanelSaveButton.textContent = "Saving...";
+  githubPanelSaveButton.textContent = t("popup.github.saving");
 
   try {
     const markdown = await buildMarkdownFromMessages(chosen);
@@ -935,23 +959,26 @@ async function saveToGitHub(): Promise<void> {
     });
 
     if (!saveResponse?.success) {
-      throw new Error(saveResponse?.error ?? "Failed to save to GitHub");
+      throw new Error(saveResponse?.error ?? t("popup.error.githubSaveFailed"));
     }
 
     devLog("GPTChatDownloader: saved to GitHub", saveResponse.data);
 
     closeGithubPanel();
-    showToast("Saved to GitHub!");
+    showToast(t("popup.toast.githubSaved"));
     openExportSuccess();
   } catch (error) {
     devError("GPTChatDownloader: GitHub save failed", error);
 
     const message = error instanceof Error ? error.message : String(error);
 
-    showToast(message.length < 60 ? message : "GitHub save failed", 3000);
+    showToast(
+      message.length < 60 ? message : t("popup.toast.githubSaveFailed"),
+      3000,
+    );
   } finally {
     resetButtons();
-    githubPanelSaveButton.textContent = "Save to exports/";
+    githubPanelSaveButton.textContent = t("popup.github.save");
   }
 }
 
@@ -1029,7 +1056,7 @@ chrome.runtime.onMessage.addListener((message) => {
  */
 githubStarButton.addEventListener("click", async () => {
   githubStarButton.disabled = true;
-  githubStarButton.textContent = "Opening GitHub...";
+  githubStarButton.textContent = t("popup.star.opening");
 
   try {
     const response = await chrome.runtime.sendMessage({
@@ -1037,9 +1064,9 @@ githubStarButton.addEventListener("click", async () => {
     });
 
     if (response?.success) {
-      showToast("Thanks for the star! ⭐");
+      showToast(t("popup.toast.starThanks"));
       githubStarButton.disabled = false;
-      githubStarButton.textContent = "★ Star on GitHub";
+      githubStarButton.textContent = t("popup.support.star");
 
       return;
     }
@@ -1051,7 +1078,7 @@ githubStarButton.addEventListener("click", async () => {
     url: `https://github.com/${PROJECT_REPOSITORY}`,
   });
 
-  showToast("Opened GitHub");
+  showToast(t("popup.toast.openedGithub"));
   githubStarButton.disabled = false;
-  githubStarButton.textContent = "★ Star on GitHub";
+  githubStarButton.textContent = t("popup.support.star");
 });

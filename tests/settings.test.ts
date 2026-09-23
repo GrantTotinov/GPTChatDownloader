@@ -30,6 +30,8 @@ describe("settings", () => {
       headingStyle: "h2",
       messageSeparator: "double",
       askWhereToSave: true,
+      theme: "system",
+      language: "auto",
     });
   });
 
@@ -59,6 +61,8 @@ describe("settings", () => {
       headingStyle: "bold",
       messageSeparator: "rule",
       askWhereToSave: true,
+      theme: "dark",
+      language: "en",
     };
 
     storageGet.mockResolvedValue(settings);
@@ -74,6 +78,8 @@ describe("settings", () => {
       headingStyle: "none",
       messageSeparator: "single",
       askWhereToSave: true,
+      theme: "light",
+      language: "fr",
     };
 
     storageSet.mockResolvedValue(undefined);

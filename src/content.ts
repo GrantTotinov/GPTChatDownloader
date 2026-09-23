@@ -14,6 +14,153 @@
  * No conversation credentials are stored by this file.
  */
 
+/*
+ * ---------------------------------------------------------
+ * MINIMAL LOCAL TRANSLATIONS
+ * ---------------------------------------------------------
+ *
+ * Content scripts can't use `import` at runtime (Chrome/
+ * Firefox both parse them as plain classic scripts, not ES
+ * modules), so this can't pull in the shared src/i18n.ts
+ * module the way popup.ts/options.ts do - doing so would
+ * force Rollup to split it into a separate chunk that
+ * content.js would then try to `import`, which fails outside
+ * a module context. This keeps its own tiny, self-contained
+ * copy of just the handful of strings the export success
+ * overlay (further below) needs, translated the same way as
+ * everything in src/locales/*.json.
+ */
+const CONTENT_LOCALES = ["en", "es", "fr", "de", "ru", "zh"] as const;
+type ContentLocale = (typeof CONTENT_LOCALES)[number];
+
+const CONTENT_STRINGS: Record<ContentLocale, Record<string, string>> = {
+  en: {
+    title: "✅ Export Successful!",
+    thanks: "Built with ❤️. Thanks for using GPTChatDownloader.",
+    rate: "⭐ Rate on Chrome Web Store",
+    coffee: "☕ Buy Me a Coffee",
+    feedbackPrompt: "Found a bug or have an idea? Reach out:",
+    shareAriaLabel: "Share on X",
+    feedbackAriaLabel: "Send feedback",
+    close: "Close",
+  },
+  es: {
+    title: "✅ ¡Exportación exitosa!",
+    thanks: "Hecho con ❤️. Gracias por usar GPTChatDownloader.",
+    rate: "⭐ Valóranos en Chrome Web Store",
+    coffee: "☕ Invítame a un café",
+    feedbackPrompt: "¿Encontraste un error o tienes una idea? Contáctanos:",
+    shareAriaLabel: "Compartir en X",
+    feedbackAriaLabel: "Enviar comentarios",
+    close: "Cerrar",
+  },
+  fr: {
+    title: "✅ Export réussi !",
+    thanks: "Créé avec ❤️. Merci d'utiliser GPTChatDownloader.",
+    rate: "⭐ Noter sur le Chrome Web Store",
+    coffee: "☕ M'offrir un café",
+    feedbackPrompt: "Un bug ou une idée ? Contactez-nous :",
+    shareAriaLabel: "Partager sur X",
+    feedbackAriaLabel: "Envoyer un commentaire",
+    close: "Fermer",
+  },
+  de: {
+    title: "✅ Export erfolgreich!",
+    thanks: "Mit ❤️ erstellt. Danke, dass du GPTChatDownloader nutzt.",
+    rate: "⭐ Im Chrome Web Store bewerten",
+    coffee: "☕ Spendiere mir einen Kaffee",
+    feedbackPrompt: "Fehler gefunden oder eine Idee? Melde dich:",
+    shareAriaLabel: "Auf X teilen",
+    feedbackAriaLabel: "Feedback senden",
+    close: "Schließen",
+  },
+  ru: {
+    title: "✅ Экспорт выполнен успешно!",
+    thanks: "Сделано с ❤️. Спасибо, что используете GPTChatDownloader.",
+    rate: "⭐ Оценить в Chrome Web Store",
+    coffee: "☕ Угостить кофе",
+    feedbackPrompt: "Нашли ошибку или есть идея? Напишите нам:",
+    shareAriaLabel: "Поделиться в X",
+    feedbackAriaLabel: "Отправить отзыв",
+    close: "Закрыть",
+  },
+  zh: {
+    title: "✅ 导出成功！",
+    thanks: "用 ❤️ 打造。感谢您使用 GPTChatDownloader。",
+    rate: "⭐ 在 Chrome 网上应用店评分",
+    coffee: "☕ 请我喝咖啡",
+    feedbackPrompt: "发现了 bug 或有好想法？请联系我们：",
+    shareAriaLabel: "分享到 X",
+    feedbackAriaLabel: "发送反馈",
+    close: "关闭",
+  },
+};
+
+let contentLocale: ContentLocale = "en";
+
+function isContentLocale(value: string): value is ContentLocale {
+  return (CONTENT_LOCALES as readonly string[]).includes(value);
+}
+
+function detectBrowserLocale(): ContentLocale {
+  const candidates: string[] = [];
+
+  try {
+    const uiLanguage = chrome?.i18n?.getUILanguage?.();
+
+    if (uiLanguage) {
+      candidates.push(uiLanguage);
+    }
+  } catch {
+    /* chrome.i18n unavailable - ignore */
+  }
+
+  candidates.push(navigator.language, ...(navigator.languages ?? []));
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+
+    const short = candidate.slice(0, 2).toLowerCase();
+
+    if (isContentLocale(short)) {
+      return short;
+    }
+  }
+
+  return "en";
+}
+
+/*
+ * Mirrors Settings["language"] from settings.ts without
+ * importing it (same reason as above - keeps this file
+ * import-free). Reads the raw stored value directly.
+ */
+async function initContentI18n(): Promise<void> {
+  const stored = await chrome.storage.sync.get({ language: "auto" });
+  const preference = String(stored.language ?? "auto");
+
+  contentLocale =
+    preference === "auto"
+      ? detectBrowserLocale()
+      : isContentLocale(preference)
+        ? preference
+        : "en";
+}
+
+function ct(key: string): string {
+  return (
+    CONTENT_STRINGS[contentLocale]?.[key] ?? CONTENT_STRINGS.en[key] ?? key
+  );
+}
+
+/*
+ * Kicked off once at load time rather than per-overlay - by
+ * the time an export finishes (at minimum a few seconds of
+ * conversation loading plus a download/GitHub save), this has
+ * long since resolved.
+ */
+void initContentI18n();
+
 const devLog = (...args: unknown[]): void => {
   if (import.meta.env.DEV) {
     console.log(...args);
@@ -1063,10 +1210,10 @@ function showExportSuccessOverlay(): void {
 
   modal.innerHTML = `
     <p style="margin: 0 0 6px; font-size: 19px; font-weight: 700; color: #3fb950;">
-      ✅ Export Successful!
+      ${ct("title")}
     </p>
     <p style="margin: 0 0 20px; font-size: 13px; color: var(--gpt-export-text); line-height: 1.5;">
-      Built with ❤️. Thanks for using GPTChatDownloader.
+      ${ct("thanks")}
     </p>
 
     <a
@@ -1075,7 +1222,7 @@ function showExportSuccessOverlay(): void {
       rel="noopener noreferrer"
       style="display: block; padding: 11px 10px; margin-bottom: 8px; border-radius: 8px; background: #10a37f; color: #ffffff; text-decoration: none; font-size: 13.5px; font-weight: 700;"
     >
-      ⭐ Rate on Chrome Web Store
+      ${ct("rate")}
     </a>
 
     <a
@@ -1084,11 +1231,11 @@ function showExportSuccessOverlay(): void {
       rel="noopener noreferrer"
       style="display: block; padding: 11px 10px; margin-bottom: 14px; border-radius: 8px; background: #ffdd00; color: #1b1f24; text-decoration: none; font-size: 13.5px; font-weight: 700;"
     >
-      ☕ Buy Me a Coffee
+      ${ct("coffee")}
     </a>
 
     <p style="margin: 0 0 10px; font-size: 12px; color: #8b949e;">
-      Found a bug or have an idea? Reach out:
+      ${ct("feedbackPrompt")}
     </p>
 
     <div style="display: flex; justify-content: center; gap: 14px; margin-bottom: 16px;">
@@ -1096,14 +1243,14 @@ function showExportSuccessOverlay(): void {
         href="https://x.com/intent/tweet?text=${encodeURIComponent("Checking out GPTChatDownloader - a handy ChatGPT export extension!")}&url=${encodeURIComponent(PROJECT_REPOSITORY_URL)}"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Share on X"
+        aria-label="${ct("shareAriaLabel")}"
         style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #2d333b; color: #ffffff; text-decoration: none;"
       >✕</a>
       <a
         href="${FEEDBACK_URL}"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Send feedback"
+        aria-label="${ct("feedbackAriaLabel")}"
         style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #2d333b; color: #ffffff; text-decoration: none; font-size: 15px;"
       >✉</a>
     </div>
@@ -1113,7 +1260,7 @@ function showExportSuccessOverlay(): void {
       id="gptchatdownloader-export-success-close"
       style="width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid #30363d; background: transparent; color: var(--gpt-export-text); font-size: 12.5px; font-weight: 500; cursor: pointer;"
     >
-      Close
+      ${ct("close")}
     </button>
   `;
 

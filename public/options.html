@@ -323,75 +323,128 @@
     </style>
   </head>
   <body>
-    <h1>GPTChatDownloader Settings</h1>
-    <p class="subtitle">These preferences apply to every export.</p>
+    <h1 data-i18n="options.title">GPTChatDownloader Settings</h1>
+    <p class="subtitle" data-i18n="options.subtitle">
+      These preferences apply to every export.
+    </p>
 
     <fieldset>
-      <legend>Message headings</legend>
+      <legend data-i18n="options.appearance.legend">Appearance</legend>
+      <label for="theme">
+        <span data-i18n="options.appearance.theme">Theme</span>
+        <select id="theme">
+          <option value="system" data-i18n="options.appearance.themeSystem">
+            System
+          </option>
+          <option value="light" data-i18n="options.appearance.themeLight">
+            Light
+          </option>
+          <option value="dark" data-i18n="options.appearance.themeDark">
+            Dark
+          </option>
+        </select>
+      </label>
+      <p class="hint" data-i18n="options.appearance.themeHint">
+        System follows your browser/operating system theme.
+      </p>
+    </fieldset>
+
+    <fieldset>
+      <legend data-i18n="options.language.legend">Language</legend>
+      <label for="language">
+        <span data-i18n="options.language.label">Language</span>
+        <select id="language">
+          <option value="auto" data-i18n="options.language.auto">
+            Auto-detect (browser language)
+          </option>
+          <option value="en">English</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+          <option value="ru">Русский</option>
+          <option value="zh">中文</option>
+        </select>
+      </label>
+      <p class="hint" data-i18n="options.language.hint">
+        Choose the language for GPTChatDownloader's interface.
+      </p>
+    </fieldset>
+
+    <fieldset>
+      <legend data-i18n="options.headings.legend">Message headings</legend>
       <label>
         <input type="radio" name="headingStyle" value="h2" />
-        Markdown heading (<code>## User</code>)
+        <span data-i18n-html="options.headings.h2"
+          >Markdown heading (<code>## User</code>)</span
+        >
       </label>
       <label>
         <input type="radio" name="headingStyle" value="bold" />
-        Bold label (<code>**User:**</code>)
+        <span data-i18n-html="options.headings.bold"
+          >Bold label (<code>**User:**</code>)</span
+        >
       </label>
       <label>
         <input type="radio" name="headingStyle" value="none" />
-        No heading
+        <span data-i18n="options.headings.none">No heading</span>
       </label>
     </fieldset>
 
     <fieldset>
-      <legend>Downloads</legend>
+      <legend data-i18n="options.timestamp.legend">Timestamp</legend>
+      <label>
+        <input type="checkbox" id="includeTimestamp" />
+        <span data-i18n="options.timestamp.include"
+          >Include export date/time at the top of the file</span
+        >
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend data-i18n="options.spacing.legend">
+        Spacing between messages
+      </legend>
+      <label>
+        <input type="radio" name="messageSeparator" value="single" />
+        <span data-i18n="options.spacing.single">Single blank line</span>
+      </label>
+      <label>
+        <input type="radio" name="messageSeparator" value="double" />
+        <span data-i18n="options.spacing.double">Double blank line</span>
+      </label>
+      <label>
+        <input type="radio" name="messageSeparator" value="rule" />
+        <span data-i18n-html="options.spacing.rule"
+          >Horizontal rule (<code>---</code>)</span
+        >
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend data-i18n="options.downloads.legend">Downloads</legend>
       <label>
         <input type="checkbox" id="askWhereToSave" />
-        Ask where to save each export
+        <span data-i18n="options.downloads.askWhereToSave"
+          >Ask where to save each export</span
+        >
       </label>
-      <a class="repository-link" id="downloads-settings-link" href="#">
+      <a
+        class="repository-link"
+        id="downloads-settings-link"
+        href="#"
+        data-i18n="options.downloads.settingsLink"
+      >
         Open browser download location settings
       </a>
     </fieldset>
 
     <fieldset>
-      <legend>Timestamp</legend>
-      <label>
-        <input type="checkbox" id="includeTimestamp" />
-        Include export date/time at the top of the file
-      </label>
-    </fieldset>
-
-    <fieldset>
-      <legend>Spacing between messages</legend>
-      <label>
-        <input type="radio" name="messageSeparator" value="single" />
-        Single blank line
-      </label>
-      <label>
-        <input type="radio" name="messageSeparator" value="double" />
-        Double blank line
-      </label>
-      <label>
-        <input type="radio" name="messageSeparator" value="rule" />
-        Horizontal rule (<code>---</code>)
-      </label>
-    </fieldset>
-    <fieldset>
-      <legend>Appearance</legend>
-      <label for="theme">
-        <span>Theme</span>
-        <select id="theme">
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-      </label>
-      <p class="hint">System follows your browser/operating system theme.</p>
-    </fieldset>
-
-    <fieldset>
-      <legend>GitHub</legend>
-      <p id="github-status" class="github-status">
+      <legend data-i18n="options.github.legend">GitHub</legend>
+      <p
+        id="github-status"
+        class="github-status"
+        data-i18n="options.github.statusDisconnected"
+      >
         Save exports straight to a GitHub repo.
       </p>
       <a
@@ -399,18 +452,27 @@
         href="https://github.com/GrantTotinov/GPTChatDownloader"
         target="_blank"
         rel="noopener noreferrer"
+        data-i18n="options.github.viewOnGithub"
       >
         View GPTChatDownloader on GitHub
       </a>
       <div class="row">
-        <button id="github-connect">Connect GitHub</button>
-        <button id="github-disconnect" hidden>Disconnect</button>
+        <button id="github-connect" data-i18n="options.github.connect">
+          Connect GitHub
+        </button>
+        <button
+          id="github-disconnect"
+          hidden
+          data-i18n="options.github.disconnect"
+        >
+          Disconnect
+        </button>
       </div>
     </fieldset>
 
     <div class="row">
-      <button id="save">Save Settings</button>
-      <span id="status">Saved</span>
+      <button id="save" data-i18n="options.save">Save Settings</button>
+      <span id="status" data-i18n="options.saved">Saved</span>
     </div>
 
     <!--
@@ -421,9 +483,17 @@
     -->
     <div id="github-overlay">
       <div id="github-overlay-card">
-        <p id="github-overlay-eyebrow">Connect GitHub</p>
+        <p
+          id="github-overlay-eyebrow"
+          data-i18n="options.githubOverlay.eyebrow"
+        >
+          Connect GitHub
+        </p>
         <p id="github-overlay-code">····-····</p>
-        <p id="github-overlay-instruction">
+        <p
+          id="github-overlay-instruction"
+          data-i18n="options.githubOverlay.instruction"
+        >
           A GitHub tab just opened. Enter this code there, then approve access
           for GPTChatDownloader.
         </p>
@@ -431,9 +501,15 @@
           id="github-overlay-spinner"
           role="status"
           aria-label="Waiting"
+          data-i18n-aria-label="options.githubOverlay.waiting"
         ></div>
         <p id="github-overlay-error"></p>
-        <button id="github-overlay-cancel">Cancel</button>
+        <button
+          id="github-overlay-cancel"
+          data-i18n="options.githubOverlay.cancel"
+        >
+          Cancel
+        </button>
       </div>
     </div>
 

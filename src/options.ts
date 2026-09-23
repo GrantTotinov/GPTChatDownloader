@@ -4,6 +4,8 @@ import {
   loadSettings,
   saveSettings,
 } from "./settings.ts";
+import { initI18n, applyTranslations, setLocale, t } from "./i18n.ts";
+
 const devError = (...args: unknown[]): void => {
   if (import.meta.env.DEV) {
     console.error(...args);
@@ -23,6 +25,8 @@ const askWhereToSaveInput = document.getElementById(
 ) as HTMLInputElement;
 
 const themeInput = document.getElementById("theme") as HTMLSelectElement;
+
+const languageInput = document.getElementById("language") as HTMLSelectElement;
 
 function applyTheme(theme: Settings["theme"]): void {
   if (theme === "system") {
@@ -95,6 +99,8 @@ function applySettingsToForm(settings: Settings): void {
 
   themeInput.value = settings.theme;
   applyTheme(settings.theme);
+
+  languageInput.value = settings.language;
 }
 
 function readSettingsFromForm(): Settings {
@@ -107,10 +113,14 @@ function readSettingsFromForm(): Settings {
     includeTimestamp: includeTimestampInput.checked,
     askWhereToSave: askWhereToSaveInput.checked,
     theme: themeInput.value as Settings["theme"],
+    language: languageInput.value as Settings["language"],
   };
 }
 
 async function init(): Promise<void> {
+  await initI18n();
+  applyTranslations();
+
   const settings = await loadSettings();
 
   applySettingsToForm(settings);
@@ -118,6 +128,23 @@ async function init(): Promise<void> {
 
 themeInput.addEventListener("change", () => {
   applyTheme(themeInput.value as Settings["theme"]);
+});
+
+/*
+ * Applies the newly chosen language to this options page
+ * immediately, without waiting for Save - people expect a
+ * language switcher to react right away. The choice is still
+ * only persisted (and picked up by the popup/content script)
+ * once Save Settings is clicked, matching every other
+ * preference on this page.
+ */
+languageInput.addEventListener("change", () => {
+  if (languageInput.value === "auto") {
+    void initI18n().then(() => applyTranslations());
+  } else {
+    setLocale(languageInput.value);
+    applyTranslations();
+  }
 });
 
 saveButton.addEventListener("click", async () => {
@@ -169,16 +196,18 @@ downloadsSettingsLink.addEventListener("click", (event) => {
  */
 
 function renderGithubDisconnected(): void {
-  githubStatusLabel.textContent = "Save exports straight to a GitHub repo.";
+  githubStatusLabel.textContent = t("options.github.statusDisconnected");
   githubStatusLabel.classList.remove("connected");
   githubConnectButton.hidden = false;
   githubConnectButton.disabled = false;
-  githubConnectButton.textContent = "Connect GitHub";
+  githubConnectButton.textContent = t("options.github.connect");
   githubDisconnectButton.hidden = true;
 }
 
 function renderGithubConnected(login: string): void {
-  githubStatusLabel.textContent = `Connected as ${login}`;
+  githubStatusLabel.textContent = t("options.github.statusConnected", {
+    login,
+  });
   githubStatusLabel.classList.add("connected");
   githubConnectButton.hidden = true;
   githubDisconnectButton.hidden = false;
@@ -237,12 +266,12 @@ githubOverlayCancelButton.addEventListener("click", () => {
    */
   closeGithubOverlay();
   githubConnectButton.disabled = false;
-  githubConnectButton.textContent = "Connect GitHub";
+  githubConnectButton.textContent = t("options.github.connect");
 });
 
 githubConnectButton.addEventListener("click", async () => {
   githubConnectButton.disabled = true;
-  githubConnectButton.textContent = "Starting...";
+  githubConnectButton.textContent = t("options.github.connecting");
 
   try {
     const response = await chrome.runtime.sendMessage({
@@ -250,7 +279,7 @@ githubConnectButton.addEventListener("click", async () => {
     });
 
     if (!response?.success) {
-      throw new Error(response?.error ?? "Failed to start GitHub sign-in.");
+      throw new Error(response?.error ?? t("options.error.githubStartFailed"));
     }
 
     const { userCode, verificationUri } = response.data;
@@ -264,10 +293,10 @@ githubConnectButton.addEventListener("click", async () => {
     githubStatusLabel.textContent =
       error instanceof Error
         ? error.message
-        : "Failed to start GitHub sign-in.";
+        : t("options.error.githubStartFailed");
 
     githubConnectButton.disabled = false;
-    githubConnectButton.textContent = "Connect GitHub";
+    githubConnectButton.textContent = t("options.github.connect");
   }
 });
 
@@ -299,12 +328,14 @@ chrome.runtime.onMessage.addListener((message) => {
     closeGithubOverlay();
     void refreshGithubStatus();
   } else {
-    showGithubOverlayError(message.error ?? "GitHub sign-in failed.");
+    showGithubOverlayError(
+      message.error ?? t("options.error.githubSigninFailed"),
+    );
     githubConnectButton.disabled = false;
-    githubConnectButton.textContent = "Connect GitHub";
+    githubConnectButton.textContent = t("options.github.connect");
   }
 });
 
-void refreshGithubStatus();
-
-init();
+init().then(() => {
+  void refreshGithubStatus();
+});

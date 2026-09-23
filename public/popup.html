@@ -596,14 +596,22 @@
   </head>
   <body>
     <div class="support-card">
-      <p>⭐ Enjoying GPTChatDownloader?</p>
-      <button id="github-star">★ Star on GitHub</button>
+      <p data-i18n="popup.support.enjoying">⭐ Enjoying GPTChatDownloader?</p>
+      <button id="github-star" data-i18n="popup.support.star">
+        ★ Star on GitHub
+      </button>
     </div>
 
-    <button id="copy">Copy Conversation</button>
-    <button id="export">Export ▾</button>
+    <button id="copy" data-i18n="popup.copy">Copy Conversation</button>
+    <button id="export" data-i18n="popup.export">Export ▾</button>
 
-    <a class="footer-link" id="options-link" href="#">Settings</a>
+    <a
+      class="footer-link"
+      id="options-link"
+      href="#"
+      data-i18n="popup.settingsLink"
+      >Settings</a
+    >
 
     <!-- Loading overlay: covers the popup while messages fetch -->
     <div id="loading-overlay">
@@ -612,8 +620,11 @@
           id="loading-overlay-spinner"
           role="status"
           aria-label="Loading"
+          data-i18n-aria-label="popup.loading.aria"
         ></div>
-        <p id="loading-overlay-message">Loading messages...</p>
+        <p id="loading-overlay-message" data-i18n="popup.loading.default">
+          Loading messages...
+        </p>
       </div>
     </div>
 
@@ -628,24 +639,56 @@
       aria-labelledby="selector-title"
     >
       <div id="selector-modal">
-        <p id="selector-title">Select Messages</p>
-        <p id="selector-panel-message">
+        <p id="selector-title" data-i18n="popup.selector.title">
+          Select Messages
+        </p>
+        <p id="selector-panel-message" data-i18n="popup.selector.subtitle">
           Choose which messages to include, then pick a format.
         </p>
 
         <div class="selector-filter-row">
-          <button id="selector-filter-all" type="button">All</button>
-          <button id="selector-filter-questions" type="button">
+          <button
+            id="selector-filter-all"
+            type="button"
+            data-i18n="popup.selector.filterAll"
+          >
+            All
+          </button>
+          <button
+            id="selector-filter-questions"
+            type="button"
+            data-i18n="popup.selector.filterQuestions"
+          >
             Questions
           </button>
-          <button id="selector-filter-answers" type="button">Answers</button>
-          <button id="selector-filter-none" type="button">None</button>
-          <button id="selector-filter-invert" type="button">Invert</button>
+          <button
+            id="selector-filter-answers"
+            type="button"
+            data-i18n="popup.selector.filterAnswers"
+          >
+            Answers
+          </button>
+          <button
+            id="selector-filter-none"
+            type="button"
+            data-i18n="popup.selector.filterNone"
+          >
+            None
+          </button>
+          <button
+            id="selector-filter-invert"
+            type="button"
+            data-i18n="popup.selector.filterInvert"
+          >
+            Invert
+          </button>
         </div>
 
         <label class="selector-expand-row">
           <input type="checkbox" id="selector-expand-toggle" />
-          Expand messages (show full text)
+          <span data-i18n="popup.selector.expand"
+            >Expand messages (show full text)</span
+          >
         </label>
 
         <div id="selector-list"></div>
@@ -656,16 +699,42 @@
 
         <div class="selector-action-row">
           <select id="selector-format-select">
-            <option value="md">Markdown (.md)</option>
-            <option value="txt">Plain text (.txt)</option>
-            <option value="json">JSON (.json)</option>
-            <option value="csv">CSV (.csv)</option>
+            <option value="md" data-i18n="popup.selector.formatMd">
+              Markdown (.md)
+            </option>
+            <option value="txt" data-i18n="popup.selector.formatTxt">
+              Plain text (.txt)
+            </option>
+            <option value="json" data-i18n="popup.selector.formatJson">
+              JSON (.json)
+            </option>
+            <option value="csv" data-i18n="popup.selector.formatCsv">
+              CSV (.csv)
+            </option>
           </select>
-          <button id="selector-export" type="button">Export</button>
-          <button id="selector-github-button" type="button">GitHub</button>
+          <button
+            id="selector-export"
+            type="button"
+            data-i18n="popup.selector.export"
+          >
+            Export
+          </button>
+          <button
+            id="selector-github-button"
+            type="button"
+            data-i18n="popup.selector.github"
+          >
+            GitHub
+          </button>
         </div>
 
-        <button id="selector-cancel" type="button">Cancel</button>
+        <button
+          id="selector-cancel"
+          type="button"
+          data-i18n="popup.selector.cancel"
+        >
+          Cancel
+        </button>
       </div>
     </div>
 
@@ -677,10 +746,20 @@
       aria-labelledby="github-panel-message"
     >
       <div id="github-panel-modal">
-        <p id="github-panel-message">Choose a repo to save into.</p>
+        <p id="github-panel-message" data-i18n="popup.github.chooseRepo">
+          Choose a repo to save into.
+        </p>
         <select id="github-repo-select"></select>
-        <button id="github-panel-save">Save to exports/</button>
-        <button id="github-panel-cancel" type="button">Cancel</button>
+        <button id="github-panel-save" data-i18n="popup.github.save">
+          Save to exports/
+        </button>
+        <button
+          id="github-panel-cancel"
+          type="button"
+          data-i18n="popup.github.cancel"
+        >
+          Cancel
+        </button>
       </div>
     </div>
 
@@ -692,20 +771,37 @@
       aria-labelledby="github-confirm-title"
     >
       <div id="github-confirm-modal">
-        <p id="github-confirm-title">⚠ Warning</p>
-        <p id="github-confirm-message">
+        <p id="github-confirm-title" data-i18n="popup.githubConfirm.title">
+          ⚠ Warning
+        </p>
+        <p id="github-confirm-message" data-i18n="popup.githubConfirm.message">
           This action will export this chat directly to your GitHub repository.
         </p>
-        <p id="github-confirm-private">
+        <p id="github-confirm-private" data-i18n="popup.githubConfirm.private">
           Make sure the conversation does not contain sensitive or private
           information.
         </p>
 
-        <p id="github-confirm-message">Are you sure you want to continue?</p>
+        <p
+          id="github-confirm-message"
+          data-i18n="popup.githubConfirm.confirmQuestion"
+        >
+          Are you sure you want to continue?
+        </p>
 
         <div class="github-confirm-actions">
-          <button id="github-confirm-cancel" type="button">Cancel</button>
-          <button id="github-confirm-export" type="button">
+          <button
+            id="github-confirm-cancel"
+            type="button"
+            data-i18n="popup.githubConfirm.cancel"
+          >
+            Cancel
+          </button>
+          <button
+            id="github-confirm-export"
+            type="button"
+            data-i18n="popup.githubConfirm.export"
+          >
             Export to GitHub
           </button>
         </div>

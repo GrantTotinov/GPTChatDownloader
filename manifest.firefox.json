@@ -11,7 +11,8 @@
   "permissions": ["activeTab", "clipboardWrite", "downloads", "storage"],
   "host_permissions": ["https://github.com/*", "https://api.github.com/*"],
   "background": {
-    "scripts": ["background.js"]
+    "scripts": ["background.js"],
+    "type": "module"
   },
   "browser_specific_settings": {
     "gecko": {
