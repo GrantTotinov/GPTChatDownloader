@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "GPTChatDownloader",
   "version": "2.0.0",
-  "description": "Export ChatGPT conversations as Markdown or plain text, with optional GitHub integration to save exports directly to a repository.",
+  "description": "Export ChatGPT chats as Markdown, text, JSON, or CSV. Copy to clipboard or save to GitHub, with message selection and dark mode.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
