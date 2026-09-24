@@ -1,6 +1,8 @@
 {
-  "popup.support.enjoying": "⭐ Vous aimez GPTChatDownloader ?",
+  "popup.support.enjoying": "❤️ Soutenez le développeur ❤️",
+  "popup.support.subtitle": "Aidez-moi à garder GPTChatDownloader gratuit.",
   "popup.support.star": "★ Mettre une étoile sur GitHub",
+  "popup.support.coffee": "☕ M'offrir un café",
   "popup.copy": "Copier la conversation",
   "popup.export": "Exporter ▾",
   "popup.settingsLink": "Paramètres",

@@ -65,6 +65,12 @@
         box-sizing: border-box;
       }
 
+      html {
+        background: var(--surface);
+        width: 340px;
+        overflow: hidden;
+      }
+
       body.overlay-open {
         height: 600px;
       }
@@ -79,6 +85,8 @@
         background: var(--surface);
         min-height: min-content;
         position: relative;
+        border-radius: 8px;
+        overflow: hidden;
       }
 
       button {
@@ -117,38 +125,61 @@
        */
 
       #copy {
+        margin-bottom: 8px;
+      }
+
+      #export {
         background: var(--accent);
         color: var(--github-text);
         border-color: var(--accent);
         margin-bottom: 8px;
       }
 
-      #copy:hover:not(:disabled) {
+      #export:hover:not(:disabled) {
         background: var(--accent-hover);
       }
 
-      #export {
-        margin-bottom: 8px;
-      }
-
       .support-card {
-        margin: 4px 0 10px;
-        padding: 10px;
+        margin: 4px 0 12px;
+        padding: 12px;
         border: 1px solid var(--border);
-        border-radius: var(--radius);
+        border-radius: 10px;
         background: var(--canvas);
         text-align: center;
       }
 
       .support-card p {
-        margin: 0 0 8px;
+        margin: 0 0 4px;
         color: var(--text);
-        font-size: 12px;
+        font-size: 12.5px;
         font-weight: 600;
       }
 
+      .support-subtitle {
+        margin: 0 0 10px !important;
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 400 !important;
+        line-height: 1.4;
+      }
+
+      .support-row {
+        display: flex;
+        gap: 8px;
+      }
+
+      .support-row button {
+        flex: 1;
+        padding: 8px 6px;
+        font-size: 12px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+      }
+
       #github-star {
-        padding: 7px 10px;
         background: var(--github);
         color: var(--github-text);
         border-color: var(--github);
@@ -156,6 +187,18 @@
 
       #github-star:hover:not(:disabled) {
         background: var(--github-hover);
+      }
+
+      #buy-coffee {
+        background: #ffdd00;
+        color: #1b1f24;
+        border-color: #ffdd00;
+        font-weight: 600;
+      }
+
+      #buy-coffee:hover:not(:disabled) {
+        background: #f0d100;
+        border-color: #f0d100;
       }
 
       .footer-link {
@@ -596,14 +639,22 @@
   </head>
   <body>
     <div class="support-card">
-      <p data-i18n="popup.support.enjoying">⭐ Enjoying GPTChatDownloader?</p>
-      <button id="github-star" data-i18n="popup.support.star">
-        ★ Star on GitHub
-      </button>
+      <p data-i18n="popup.support.enjoying">❤️ Support the developer ❤️</p>
+      <p class="support-subtitle" data-i18n="popup.support.subtitle">
+        Help me keep GPTChatDownloader free.
+      </p>
+      <div class="support-row">
+        <button id="github-star" data-i18n="popup.support.star">
+          ★ Star on GitHub
+        </button>
+        <button id="buy-coffee" data-i18n="popup.support.coffee">
+          ☕ Buy Me a Coffee
+        </button>
+      </div>
     </div>
 
-    <button id="copy" data-i18n="popup.copy">Copy Conversation</button>
     <button id="export" data-i18n="popup.export">Export ▾</button>
+    <button id="copy" data-i18n="popup.copy">Copy Conversation</button>
 
     <a
       class="footer-link"

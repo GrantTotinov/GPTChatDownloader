@@ -1,6 +1,6 @@
 # GPTChatDownloader
 
-A Chrome extension that exports your ChatGPT conversations to Markdown or plain text, so you can keep a copy, share it, or drop it straight into a GitHub repo.
+A Chrome extension that exports your ChatGPT conversations to Markdown, plain text, JSON, or CSV, so you can keep a copy, share it, or drop it straight into a GitHub repo.
 
 ## Why this exists
 
@@ -11,9 +11,12 @@ GPTChatDownloader takes a different approach. It talks to the same conversation 
 ## What it does
 
 - **Copy** the current conversation to your clipboard as Markdown.
-- **Export** it as a `.md` or `.txt` file.
+- **Export** it as `.md`, `.txt`, `.json`, or `.csv`.
+- **Select which messages to include** before exporting, filter to questions or answers only, or pick messages by hand.
 - **Save it straight to a GitHub repo** (see below) instead of downloading it locally.
 - Customize heading style, message spacing, and whether to include a timestamp, from the extension's settings page.
+- Switch between Light, Dark, or System theme.
+- Use the interface in English, Spanish, French, German, Russian, or Chinese, or let it follow your browser's language automatically.
 
 ## Installing it
 
@@ -48,7 +51,7 @@ Any time you pull new changes, re-run `npm run build` and then hit the reload ic
 
 1. Open any conversation on `chatgpt.com`.
 2. Click the GPTChatDownloader icon.
-3. Pick **Copy Conversation**, or open **Export ▾** for a `.md`/`.txt` download.
+3. Pick **Copy Conversation**, or open **Export ▾** to choose a format and, optionally, select specific messages first.
 
 ## Saving to GitHub
 
@@ -63,10 +66,12 @@ This uses GitHub's OAuth **device flow**, the same mechanism CLI tools like the 
 ## A few notes
 
 - GPTChatDownloader only works on `chatgpt.com`. If OpenAI changes their internal API, exports may break until the extension gets updated. That's the trade-off of not relying on the visible page content.
-- The GitHub integration needs `repo` access to create files, since GitHub's Contents API doesn't offer a narrower "just let me write files" scope. If that's more than you're comfortable granting, stick to the local `.md`/`.txt` export.
+- The GitHub integration needs `repo` access to create files, since GitHub's Contents API doesn't offer a narrower "just let me write files" scope. If that's more than you're comfortable granting, stick to the local export formats.
 - This is a side project, maintained when time allows. Bug reports and pull requests are welcome. If something breaks, an exported conversation ID or a browser console log helps a lot when trying to reproduce it.
 
 ## Support
+
+GPTChatDownloader is free and independently maintained. If it's useful to you, starring the repo or buying me a coffee helps keep it going: [buymeacoffee.com/granttotinov](https://buymeacoffee.com/granttotinov).
 
 Questions, bugs, or feature requests: open an issue on this repo, or email **granttotinov604@gmail.com** directly.
 

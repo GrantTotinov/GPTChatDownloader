@@ -28,6 +28,7 @@ void initI18n().then(() => {
 import { stripMarkdown } from "./markdown-strip.ts";
 
 const PROJECT_REPOSITORY = "GrantTotinov/GPTChatDownloader";
+const COFFEE_URL = "https://buymeacoffee.com/granttotinov";
 
 const devLog = (...args: unknown[]): void => {
   if (import.meta.env.DEV) {
@@ -69,6 +70,9 @@ const optionsLink = document.getElementById(
 ) as HTMLAnchorElement;
 const githubStarButton = document.getElementById(
   "github-star",
+) as HTMLButtonElement;
+const buyCoffeeButton = document.getElementById(
+  "buy-coffee",
 ) as HTMLButtonElement;
 
 /* Loading overlay (covers the whole popup while messages load) */
@@ -154,6 +158,7 @@ const allButtons = [
   copyButton,
   exportButton,
   githubStarButton,
+  buyCoffeeButton,
   selectorExportButton,
   selectorGithubButton,
   githubPanelSaveButton,
@@ -1081,4 +1086,13 @@ githubStarButton.addEventListener("click", async () => {
   showToast(t("popup.toast.openedGithub"));
   githubStarButton.disabled = false;
   githubStarButton.textContent = t("popup.support.star");
+});
+
+/*
+ * ---------------------------------------------------------
+ * BUY ME A COFFEE
+ * ---------------------------------------------------------
+ */
+buyCoffeeButton.addEventListener("click", () => {
+  void chrome.tabs.create({ url: COFFEE_URL });
 });
